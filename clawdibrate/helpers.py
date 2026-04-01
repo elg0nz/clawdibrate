@@ -56,8 +56,12 @@ def extract_section(agents_md: str, section_name: str) -> str:
 def replace_section(agents_md: str, section_name: str, new_content: str) -> str:
     """Replace a section's content by heading name."""
     pattern = rf"(## {re.escape(section_name)}\s*\n)(.*?)(?=\n## |\Z)"
-    replacement = rf"\g<1>{new_content}\n\n"
-    return re.sub(pattern, replacement, agents_md, flags=re.DOTALL)
+    return re.sub(
+        pattern,
+        lambda m: m.group(1) + new_content + "\n\n",
+        agents_md,
+        flags=re.DOTALL,
+    )
 
 
 def bump_patch_version(agents_md: str) -> str:

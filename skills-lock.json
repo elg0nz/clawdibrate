@@ -26,6 +26,16 @@
       "sourceType": "local",
       "computedHash": "57341c561f21fa8ceb493f9f7d7e852b4b52f059742c93bd22adbc680b0152d2"
     },
+    "clawdbrt:record-start": {
+      "source": "/Users/gonz/Code/clawdibrate/src/skills",
+      "sourceType": "local",
+      "computedHash": "b0b117ee8cee334480b2263a1a740d5dd072c7b87e02053f4e1dbd82f0888e4b"
+    },
+    "clawdbrt:record-stop": {
+      "source": "/Users/gonz/Code/clawdibrate/src/skills",
+      "sourceType": "local",
+      "computedHash": "7786795b153d1539734fb27f8e6fbf7f687d94c3f7eb14b66eef59abed275127"
+    },
     "deploy-to-vercel": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
