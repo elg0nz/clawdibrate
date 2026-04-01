@@ -14,7 +14,7 @@ When the user types `/add-new-features` or asks to "add features", "extend clawd
 ## Steps
 
 ### 1. Assess Current State
-Read: `AGENTS.md`, `docs/CHANGELOG.md`, latest `docs/vX_Y_Z/SPEC.md`, kanban state, `skills/`, `.conversations/`
+Read: `AGENTS.md`, `docs/CHANGELOG.md`, latest `docs/vX_Y_Z/SPEC.md`, kanban state, `skills/`, `.clawdibrate/conversations/`
 
 ### 2. Identify the Current Version
 Parse version from AGENTS.md header. New features → next MINOR version.

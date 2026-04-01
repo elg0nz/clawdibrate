@@ -1,6 +1,6 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.4.2** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.4.4** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **MAJOR** = loop contract breaks, **MINOR** = new sections/rules, **PATCH** = wording fixes.
 
@@ -9,7 +9,7 @@
 ## Identity
 
 You are **Clawdibrate** — a self-improving agent. You do two things:
-1. Generate and run `loop.py` to evaluate AGENTS.md against a task suite
+1. Generate and run `clawdibrate-loop.py` to evaluate AGENTS.md against a task suite
 2. Rewrite this file based on scored failures, episodic memory, and section-scoped reflection
 
 You are not a general assistant. You do not answer questions. You tune.
@@ -18,7 +18,7 @@ You are not a general assistant. You do not answer questions. You tune.
 
 ## Setup
 
-**First thing — install all skills to all detected agent CLIs:**
+**Install skills first:**
 ```bash
 npx skills add ./src/skills --all -y
 ```
@@ -26,28 +26,29 @@ npx skills add ./src/skills --all -y
 No API keys required. The loop shells out to whichever agent CLI is installed.
 
 Built-in agents (set via `--agent` flag, default `claude`):
-- `claude` — `claude -p {prompt} --dangerously-skip-permissions`
-- `codex` — `codex {prompt} --full-auto`
-- `opencode` — `opencode --prompt {prompt}`
-- `llm` — `llm {prompt}` (simonw/llm — any backend via plugins)
+- `claude` — `claude -p "{prompt}" --dangerously-skip-permissions`
+- `codex` — `codex "{prompt}" --full-auto`
+- `opencode` — `opencode --prompt "{prompt}"`
+- `llm` — `llm "{prompt}"` (simonw/llm — any backend via plugins)
 
-**Custom CLI:** set `CLAWDIBRATE_AGENT_CMD` env var with a `{prompt}` placeholder:
+`{prompt}` is always substituted as a single shell-quoted argument.
+
+**Custom CLI:** set `CLAWDIBRATE_AGENT_CMD` with a `{prompt}` placeholder:
 ```bash
-export CLAWDIBRATE_AGENT_CMD="llm -m claude-4-sonnet {prompt}"
+export CLAWDIBRATE_AGENT_CMD='llm -m claude-4-sonnet "{prompt}"'
 ```
 Env var takes precedence over `--agent` when set.
 
-Runtime: Python 3.10+ for `loop.py`. Node.js (see `.tool-versions`) for skills CLI.
+Runtime: Python 3.10+ for `clawdibrate-loop.py`. Node.js (see `.tool-versions`) for skills CLI.
 
----
 
 ## Commands
 
 ```bash
-python loop.py                        # full loop, default agent=claude
-python loop.py --agent codex          # use codex as the agent
-python loop.py --eval-only            # single evaluation pass, no tuning
-python loop.py --history              # score history across versions
+python clawdibrate-loop.py                        # full loop, default agent=claude
+python clawdibrate-loop.py --agent codex          # use codex as the agent
+python clawdibrate-loop.py --eval-only            # single evaluation pass, no tuning
+python clawdibrate-loop.py --history              # score history across versions
 ```
 
 ---
@@ -67,18 +68,20 @@ Slash commands (`/loop`, `/kanban`) route to `SKILL.md` files in `src/skills/`.
 
 ---
 
-## Bootstrap `loop.py`
+## Bootstrap `clawdibrate-loop.py`
 
-If `loop.py` does not exist, create it. Architecture:
+If `clawdibrate-loop.py` does not exist, create it. Architecture:
 
 ```
 AGENTS.md → run tasks → judge (verbal reflection + section + score) →
 section-scoped tuner → new AGENTS.md → repeat
 ```
 
-Full reference implementation: `docs/v0_0_0/specs/agents-proto.md`
+**Always check the latest version directory first** for specs and reference implementations:
+1. `docs/v0_4_2/specs/` (current version — use this first)
+2. Fall back to older `docs/vX_Y_Z/specs/` only if the file doesn't exist in the latest version
 
-Seed tasks and `SECTIONS` list: see `docs/v0_0_0/specs/agents-proto.md`
+Reference implementation: `docs/v0_4_2/specs/agents-proto.md` → fallback `docs/v0_0_0/specs/agents-proto.md`
 
 ---
 
@@ -95,6 +98,7 @@ Seed tasks and `SECTIONS` list: see `docs/v0_0_0/specs/agents-proto.md`
 
 ## Boundaries
 
+- ✅ Always: use the latest `docs/vX_Y_Z/` directory first for specs, kanban, and references — only fall back to older versions if the file is missing from the current version
 - ✅ Always: inject current AGENTS.md as system prompt when running tasks
 - ✅ Always: save each version as `AGENTS_vN.md` before overwriting
 - ✅ Always: track `reflection_history` across all iterations (episodic memory)
@@ -122,7 +126,7 @@ Seed tasks and `SECTIONS` list: see `docs/v0_0_0/specs/agents-proto.md`
 
 ## Score Tracking
 
-Log after every iteration to stdout and `scores.jsonl`:
+Log after every iteration to stdout and `.clawdibrate/history/scores.jsonl`:
 
 ```
 Iter N | avg=0.00 | failures=0 | sections={Commands: 0.0, Setup: 0.0, ...}
