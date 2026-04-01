@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 for tracking AGENTS.md versions.
 
+## [0.3.0] - 2026-04-01
+
+### Added
+- **Skills section in AGENTS.md** — skill router for `/loop` and `/kanban`
+- `skills/loop/SKILL.md` — tuning loop as a skill
+- `skills/kanban/SKILL.md` — kanban card management as a skill
+- Installed `vercel-labs/skills` framework (7 community skills in `.claude/skills/`)
+- Research doc: `docs/v0_3_0/vercel-skills.md`
+- Boundary rule: no commit without version README complete
+- Kanban ticket naming convention: `clwdi-vMAJOR_MINOR_PATCH-NNN.md`
+- Kanban board files: `inbox.md`, `in-progress.md`, `done.md`, `icebox.md`
+- Icebox carry-forward between versions
+
+### Changed
+- Seed tasks and SECTIONS list moved from AGENTS.md to proto spec (word budget)
+- SECTIONS list updated to include "Skills"
+
 ## [0.2.0] - 2026-04-01
 
 ### Added
