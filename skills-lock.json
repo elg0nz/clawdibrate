@@ -1,10 +1,25 @@
 {
   "version": 1,
   "skills": {
+    "add-new-features": {
+      "source": "/Users/gonz/Code/clawdibrate/src/skills",
+      "sourceType": "local",
+      "computedHash": "b0ee76d8473aa4aca171ccce9b49886654637f91c5d3b4d477151b87ce4e0ffa"
+    },
     "deploy-to-vercel": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
       "computedHash": "d2b5bcc7c09fdb649129ffc7dd7b647ec1b155736974b974292675afd588cb39"
+    },
+    "kanban": {
+      "source": "/Users/gonz/Code/clawdibrate/src/skills",
+      "sourceType": "local",
+      "computedHash": "75eeebe2007729305f200e1ba9db47b6d10aaf01edd5e2a90dd996550f30b026"
+    },
+    "loop": {
+      "source": "/Users/gonz/Code/clawdibrate/src/skills",
+      "sourceType": "local",
+      "computedHash": "34318d19623539fac8f177f4d7c18e2d92917931f60df22699ccfdbb7dfdabc0"
     },
     "vercel-cli-with-tokens": {
       "source": "vercel-labs/agent-skills",

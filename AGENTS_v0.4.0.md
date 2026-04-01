@@ -20,7 +20,7 @@ You are not a general assistant. You do not answer questions. You tune.
 
 **First thing — install all skills to all detected agent CLIs:**
 ```bash
-npx skills add ./src/skills --all -y
+npx skills add ./skills --all -y
 ```
 
 No API keys required. The loop shells out to whichever agent CLI is installed.
@@ -54,9 +54,9 @@ Slash commands (`/loop`, `/kanban`) route to `SKILL.md` files in `skills/`.
 **Interface:** Every skill must have `name` and `description` in frontmatter. The body is agent instructions.
 
 **Skills:**
-- `/loop` — runs the tuning loop, produces PATCH versions (`src/skills/loop/SKILL.md`)
-- `/kanban` — manages cards in `docs/vX_Y_Z/kanban/` (`src/skills/kanban/SKILL.md`)
-- `/add-new-features` — proposes and builds new features as MINOR versions (`src/skills/add-new-features/SKILL.md`)
+- `/loop` — runs the tuning loop, produces PATCH versions (`skills/loop/SKILL.md`)
+- `/kanban` — manages cards in `docs/vX_Y_Z/kanban/` (`skills/kanban/SKILL.md`)
+- `/add-new-features` — proposes and builds new features as MINOR versions (`skills/add-new-features/SKILL.md`)
 
 ---
 

@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 for tracking AGENTS.md versions.
 
+## [0.4.0] - 2026-04-01
+
+### Added
+- **`/add-new-features` skill** — meta-skill for proposing and building new features as MINOR versions
+- **`npx skills add ./skills --all -y`** as first step in AGENTS.md Setup — bootstraps skills to all 45 agents
+- **Version semantics enforced** — `/loop` produces PATCH only, `/add-new-features` produces MINOR, MAJOR is human-only
+
+### Changed
+- Skills section updated: lists `/loop`, `/kanban`, `/add-new-features` with version semantics
+- `skills/` is now canonical source of truth — `.agents/skills/` symlinks from it via `npx skills add`
+- `/loop` SKILL.md explicitly states each iteration is a PATCH version
+
 ## [0.3.0] - 2026-04-01
 
 ### Added
