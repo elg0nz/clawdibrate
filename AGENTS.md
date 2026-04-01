@@ -25,10 +25,17 @@ npx skills add ./src/skills --all -y
 
 No API keys required. The loop shells out to whichever agent CLI is installed.
 
-Supported agents (set via `--agent` flag, default `claude`):
-- `claude` — `claude -p "prompt" --dangerously-skip-permissions`
-- `codex` — `codex "prompt" --full-auto` (positional arg, not `--prompt`)
-- `opencode` — `opencode --prompt "prompt"` (option flag, not positional)
+Built-in agents (set via `--agent` flag, default `claude`):
+- `claude` — `claude -p {prompt} --dangerously-skip-permissions`
+- `codex` — `codex {prompt} --full-auto`
+- `opencode` — `opencode --prompt {prompt}`
+- `llm` — `llm {prompt}` (simonw/llm — any backend via plugins)
+
+**Custom CLI:** set `CLAWDIBRATE_AGENT_CMD` env var with a `{prompt}` placeholder:
+```bash
+export CLAWDIBRATE_AGENT_CMD="llm -m claude-4-sonnet {prompt}"
+```
+Env var takes precedence over `--agent` when set.
 
 Runtime: Python 3.10+ for `loop.py`. Node.js (see `.tool-versions`) for skills CLI.
 
