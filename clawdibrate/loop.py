@@ -11,11 +11,16 @@ from .helpers import (
     bump_patch_version,
     extract_json,
     extract_section,
+    format_version,
+    format_version_dir,
     get_current_version,
+    git_commit_files,
     git_commit_version,
     read_agents_md,
     replace_section,
     save_version,
+    update_top_changelog,
+    write_version_readme,
 )
 from .log import BOLD, DIM, GREEN, RED, RESET, YELLOW, log_phase, log_result, log_step, log_warn
 from .runner import run_cli
@@ -41,7 +46,7 @@ TASKS = [
     "Produce the exact CLI command to run codex in full-auto mode with the prompt 'fix lint errors'",
 ]
 
-DEFAULT_ITERATIONS = 20
+DEFAULT_ITERATIONS = 10
 
 JUDGE_PROMPT = """You are a judge evaluating an AI agent's response to a task.
 
@@ -165,12 +170,11 @@ def evaluate(agent: str, agents_md: str) -> tuple[list[dict], dict[str, float]]:
 def generate_loop_docs(start_version: tuple[int, int, int], end_version: tuple[int, int, int],
                        all_results: list[dict]):
     """Create docs/vX_Y_Z/ folder with changelog for the loop run."""
-    sv = f"{end_version[0]}_{end_version[1]}_{end_version[2]}"
-    docs_dir = Path(f"docs/v{sv}")
+    docs_dir = Path(f"docs/v{format_version_dir(end_version)}")
     docs_dir.mkdir(parents=True, exist_ok=True)
 
-    start_str = f"{start_version[0]}.{start_version[1]}.{start_version[2]}"
-    end_str = f"{end_version[0]}.{end_version[1]}.{end_version[2]}"
+    start_str = format_version(start_version)
+    end_str = format_version(end_version)
 
     changelog_lines = [
         f"# Loop Changelog: v{start_str} \u2192 v{end_str}\n",
@@ -208,7 +212,7 @@ def run_loop(agent: str, eval_only: bool = False, iterations: int = DEFAULT_ITER
     """Main tuning loop."""
     agents_md = read_agents_md()
     start_version = get_current_version(agents_md)
-    sv = f"{start_version[0]}.{start_version[1]}.{start_version[2]}"
+    sv = format_version(start_version)
     reflection_history: list[dict] = []
     converged_sections: dict[str, list] = defaultdict(list)
     all_iter_results: list[dict] = []
@@ -221,7 +225,7 @@ def run_loop(agent: str, eval_only: bool = False, iterations: int = DEFAULT_ITER
     for iteration in range(1, iterations + 1):
         iter_t0 = time.monotonic()
         cur_v = get_current_version(agents_md)
-        cur_vs = f"{cur_v[0]}.{cur_v[1]}.{cur_v[2]}"
+        cur_vs = format_version(cur_v)
         print(f"\n{'='*60}")
         print(f"{BOLD}Iteration {iteration}/{iterations}{RESET}  (v{cur_vs})")
         print(f"{'='*60}")
@@ -237,17 +241,6 @@ def run_loop(agent: str, eval_only: bool = False, iterations: int = DEFAULT_ITER
         passing = len(all_scores) - failures
         color = GREEN if avg_score >= 0.95 else YELLOW if avg_score >= 0.8 else RED
         print(f"  {color}{'\u2588' * int(avg_score * 20)}{'\u2591' * (20 - int(avg_score * 20))}{RESET} {avg_score:.2f}  ({passing}/{len(all_scores)} pass)")
-
-        if avg_score >= 0.95:
-            all_iter_results.append({
-                "iteration": iteration,
-                "avg_score": avg_score,
-                "failures": failures,
-                "section_scores": dict(section_scores),
-                "tuned_sections": [],
-            })
-            log_result(f"Converged at avg={avg_score:.2f}")
-            break
 
         for section, score in section_scores.items():
             converged_sections[section].append(score)
@@ -321,12 +314,36 @@ def run_loop(agent: str, eval_only: bool = False, iterations: int = DEFAULT_ITER
         all_iter_results.append(iter_record)
 
         if iter_record["tuned_sections"]:
+            prev_v = get_current_version(agents_md)
             agents_md = bump_patch_version(agents_md)
             AGENTS_MD_PATH.write_text(agents_md)
             new_v = get_current_version(agents_md)
-            new_vs = f"{new_v[0]}.{new_v[1]}.{new_v[2]}"
+            new_vs = format_version(new_v)
+            write_version_readme(
+                version=new_v,
+                previous_version=prev_v,
+                iteration=iteration,
+                avg_score=avg_score,
+                failures=failures,
+                tuned_sections=iter_record["tuned_sections"],
+            )
+            update_top_changelog(
+                version=new_v,
+                previous_version=prev_v,
+                iteration=iteration,
+                avg_score=avg_score,
+                failures=failures,
+                tuned_sections=iter_record["tuned_sections"],
+            )
             log_result(f"Bumped to v{new_vs}, saved AGENTS.md")
-            git_commit_version(new_vs, iteration)
+            git_commit_version(
+                new_vs,
+                iteration,
+                extra_files=[
+                    "docs/CHANGELOG.md",
+                    f"docs/v{format_version_dir(new_v)}/README.md",
+                ],
+            )
 
         iter_elapsed = time.monotonic() - iter_t0
         log_step(f"Iteration {iteration} completed in {iter_elapsed:.1f}s")
@@ -334,7 +351,11 @@ def run_loop(agent: str, eval_only: bool = False, iterations: int = DEFAULT_ITER
     end_version = get_current_version(read_agents_md())
     if not eval_only:
         generate_loop_docs(start_version, end_version, all_iter_results)
+        git_commit_files(
+            f"loop docs: v{format_version(start_version)} to v{format_version(end_version)}",
+            [f"docs/v{format_version_dir(end_version)}/CHANGELOG.md"],
+        )
 
     total_elapsed = time.monotonic() - loop_t0
-    ev = f"{end_version[0]}.{end_version[1]}.{end_version[2]}"
+    ev = format_version(end_version)
     print(f"\n{BOLD}{GREEN}Loop complete.{RESET} v{sv} \u2192 v{ev} in {total_elapsed:.1f}s ({len(all_iter_results)} iteration(s))")
