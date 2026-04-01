@@ -16,20 +16,14 @@ You are not a general assistant. You do not answer questions. You tune.
 
 ## Setup
 
-```bash
-pip install anthropic
-export ANTHROPIC_API_KEY=your_key_here
-```
+No API keys required. The loop shells out to whichever agent CLI is installed.
 
-Supported agents (inject as system prompt or via CLI):
-- `claude` — Claude Code CLI: `claude "prompt" --dangerously-skip-permissions`
-- `codex` — OpenAI Codex CLI: `codex "prompt" --full-auto`
-- `opencode` — OpenCode CLI: `opencode --prompt "prompt"`
+Supported agents (set via `--agent` flag, default `claude`):
+- `claude` — `claude -p "prompt" --dangerously-skip-permissions`
+- `codex` — `codex "prompt" --full-auto` (positional arg, not `--prompt`)
+- `opencode` — `opencode --prompt "prompt"` (option flag, not positional)
 
-Symlink for Claude Code compatibility:
-```bash
-ln -s AGENTS.md CLAUDE.md
-```
+Runtime: Python 3.10+ for `loop.py`.
 
 ---
 
@@ -62,33 +56,47 @@ section-scoped tuner → new AGENTS.md → repeat
 
 ### Required: `loop.py` structure
 
+CLI-first — no API keys needed. Shells out to whichever agent CLI is installed.
+
 ```python
-import anthropic, json, re
+import subprocess, json, re, argparse
 from collections import defaultdict
 
-client = anthropic.Anthropic()
-
 SECTIONS = [
-    "Setup", "Commands", "Project Structure",
-    "Code Style", "Workflow", "Boundaries", "Known Gotchas"
+    "Setup", "Commands", "Bootstrap loop.py",
+    "Tuning Rules", "Boundaries", "Known Gotchas", "Score Tracking"
 ]
 
 TASKS = [
-    # Add 3-5 concrete, automatically scorable tasks here
-    # Good: "Write a bash command that lists all .py files modified in the last 24h"
-    # Bad: "Help me with the project"
+    "Write a bash one-liner that lists all .py files modified in the last 24h",
+    "Given this AGENTS.md, identify which section the Boundaries rules belong to and output its exact heading",
+    "Generate the judge prompt that returns JSON with keys: score, reflection, affected_section",
+    "Write a Python function that extracts JSON from a string, falling back to regex if json.loads fails",
+    "Produce the exact CLI command to run codex in full-auto mode with the prompt 'fix lint errors'",
 ]
 
-def run_agent(agents_md: str, task: str) -> str:
-    # Inject AGENTS.md as system prompt, run task
-    ...
+AGENT_COMMANDS = {
+    "claude": lambda prompt: ["claude", "-p", prompt, "--dangerously-skip-permissions"],
+    "codex":  lambda prompt: ["codex", prompt, "--full-auto"],
+    "opencode": lambda prompt: ["opencode", "--prompt", prompt],
+}
 
-def judge(task: str, response: str) -> dict:
+def run_cli(agent: str, prompt: str) -> str:
+    """Shell out to agent CLI. No API keys needed."""
+    cmd = AGENT_COMMANDS[agent](prompt)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    return result.stdout.strip()
+
+def run_agent(agent: str, agents_md: str, task: str) -> str:
+    prompt = f"System instructions:\n{agents_md}\n\nTask:\n{task}"
+    return run_cli(agent, prompt)
+
+def judge(agent: str, task: str, response: str) -> dict:
     # Returns: {"score": 0.0-1.0, "reflection": "...", "affected_section": "..."}
     # Verbal reflection grounded in Reflexion (Shinn et al., NeurIPS 2023)
     ...
 
-def recursive_tune(agents_md: str, section_failures: dict, history: list) -> str:
+def recursive_tune(agent: str, agents_md: str, section_failures: dict, history: list) -> str:
     # Section-scoped edits (RLM-style decomposition)
     # History-aware synthesis (RISE multi-turn MDP)
     ...

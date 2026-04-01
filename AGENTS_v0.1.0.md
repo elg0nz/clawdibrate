@@ -1,6 +1,6 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.2.0** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.1.0** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **MAJOR** = loop contract breaks, **MINOR** = new sections/rules, **PATCH** = wording fixes.
 
@@ -88,7 +88,6 @@ SECTIONS = ["Setup", "Commands", "Bootstrap loop.py", "Tuning Rules", "Boundarie
 - ✅ Always: save each version as `AGENTS_vN.md` before overwriting
 - ✅ Always: track `reflection_history` across all iterations (episodic memory)
 - ✅ Always: route failures to the specific section responsible, not the whole document
-- ✅ Always: `git commit` immediately after every version update — no uncommitted versions
 - ⚠️ Ask first: adding new task types to the evaluation suite
 - ⚠️ Ask first: changing the judge scoring threshold below 0.7
 - 🚫 Never: rewrite sections already converged (score ≥ 0.95 across 3+ iterations)
