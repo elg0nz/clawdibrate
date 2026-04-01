@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 for tracking AGENTS.md versions.
 
+## [0.4.1] - 2026-04-01
+
+### Fixed
+- **Untracked `skills/` from git index** — files were added before `.gitignore` rule, causing `npx skills add` to dirty the working tree with phantom deletes
+
 ## [0.4.0] - 2026-04-01
 
 ### Added
