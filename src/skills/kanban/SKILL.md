@@ -1,5 +1,5 @@
 ---
-name: kanban
+name: clawdbrt:kanban
 description: Create, move, and manage kanban cards in docs/vX_Y_Z/kanban/ folders. Handles ticket naming, board files, and version carry-forward.
 ---
 
@@ -9,7 +9,7 @@ Manage work tracking cards in version-scoped kanban boards.
 
 ## When to Use
 
-When the user types `/kanban` or asks to create tickets, check board status, move cards, or manage work items.
+When the user types `/clawdbrt:kanban` or asks to create tickets, check board status, move cards, or manage work items.
 
 ## Ticket Format
 

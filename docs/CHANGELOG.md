@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 for tracking AGENTS.md versions.
 
+## [0.5.0] - 2026-04-01
+
+### Added
+- **`/clawdbrt:implement` skill** — reads kanban board, resolves card dependencies, implements by priority with parallel agents
+- **`clawdbrt:` namespace** — all skills renamed: `clawdbrt:loop`, `clawdbrt:kanban`, `clawdbrt:add-new-features`, `clawdbrt:implement`
+- **8 new boundary rules** — parallel agents, no TaskCreate/checklists, ticket naming convention, `src/skills/` canonical source, version semantics, check existing tools, version workflow, all capabilities as skills
+- **3 new "Never" rules** — no editing `skills/` directly, no auto-bump MAJOR, no checklists
+
+### Changed
+- All hardcoded version paths (`v0_0_0`, `v0_4_2`) replaced with "latest `docs/vX_Y_Z/`" language
+- Skills section documents `src/skills/` as canonical source with `skills/` and `.agents/` as install outputs
+- Skills architecture direction: all new capabilities must be implemented as skills
+
 ## [0.4.2] - 2026-04-01
 
 ### Fixed

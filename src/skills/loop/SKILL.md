@@ -1,5 +1,5 @@
 ---
-name: loop
+name: clawdbrt:loop
 description: Run the Clawdibrate self-improvement tuning loop. Evaluates AGENTS.md against a task suite, scores failures, and rewrites sections. Each iteration produces a PATCH version.
 ---
 
@@ -9,7 +9,7 @@ Run the Clawdibrate tuning loop to evaluate and improve AGENTS.md.
 
 ## When to Use
 
-When the user types `/loop` or asks to "tune", "evaluate", "improve AGENTS.md", or "run the loop".
+When the user types `/clawdbrt:loop` or asks to "tune", "evaluate", "improve AGENTS.md", or "run the loop".
 
 ## How It Works
 
@@ -36,7 +36,7 @@ section-scoped tuner → new AGENTS.md → repeat
 
 ## Modes
 
-- `/loop` — full self-improvement loop
+- `/clawdbrt:loop` — full self-improvement loop
 - `/loop --eval-only` — single evaluation pass, no tuning
 - `/loop --history` — show score history across versions
 

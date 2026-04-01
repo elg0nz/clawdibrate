@@ -1,5 +1,5 @@
 ---
-name: add-new-features
+name: clawdbrt:add-new-features
 description: Meta-skill that proposes and implements new features for Clawdibrate. Reads AGENTS.md, kanban state, and codebase to generate feature proposals as kanban cards, then optionally spawns agents to build them.
 ---
 
@@ -9,7 +9,7 @@ Meta-skill for extending Clawdibrate itself.
 
 ## When to Use
 
-When the user types `/add-new-features` or asks to "add features", "extend clawdibrate", "what should we build next", or "propose improvements".
+When the user types `/clawdbrt:add-new-features` or asks to "add features", "extend clawdibrate", "what should we build next", or "propose improvements".
 
 ## Steps
 
@@ -31,6 +31,6 @@ Spawn parallel agents for independent cards. Install new skills via `npx skills 
 ## Key Rules
 
 - New features → MINOR version bumps
-- `/loop` → PATCH versions (wording fixes, score-driven rewrites)
+- `/clawdbrt:loop` → PATCH versions (wording fixes, score-driven rewrites)
 - MAJOR → human decision only
 - Always propose before building — never auto-implement without approval

@@ -77,9 +77,10 @@ python loop.py --agent codex     # use a specific agent
 
 | Skill | Description |
 |-------|-------------|
-| `/loop` | Run the tuning loop (PATCH version) |
-| `/kanban` | Manage cards in `docs/vX_Y_Z/kanban/` |
-| `/add-new-features` | Propose and build new features (MINOR version) |
+| `/clawdbrt:loop` | Run the tuning loop (PATCH version) |
+| `/clawdbrt:kanban` | Manage cards in `docs/vX_Y_Z/kanban/` |
+| `/clawdbrt:add-new-features` | Propose and build new features (MINOR version) |
+| `/clawdbrt:implement` | Read kanban board and implement cards by priority |
 
 <!-- TODO: Add sections below -->
 <!-- ## Architecture -->

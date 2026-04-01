@@ -1,6 +1,6 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.4.4** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.5.0** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **MAJOR** = loop contract breaks, **MINOR** = new sections/rules, **PATCH** = wording fixes.
 
@@ -55,16 +55,21 @@ python clawdibrate-loop.py --history              # score history across version
 
 ## Skills
 
-Slash commands (`/loop`, `/kanban`) route to `SKILL.md` files in `src/skills/`.
+Slash commands route to `SKILL.md` files in `src/skills/`. All skills use the `clawdbrt:` namespace prefix.
 
-**Registration:** One directory per skill in `src/skills/`, each containing a `SKILL.md` with YAML frontmatter. Run `npx skills add ./src/skills --all -y` to distribute.
+**Registration:** One directory per skill in `src/skills/`, each containing a `SKILL.md` with YAML frontmatter (`name: clawdbrt:<skill-name>`). Run `npx skills add ./src/skills --all -y` to distribute to `skills/` and `.agents/`.
 
-**Interface:** Every skill must have `name` and `description` in frontmatter. The body is agent instructions.
+**Interface:** Every skill must have `name` (with `clawdbrt:` prefix) and `description` in frontmatter. The body is agent instructions.
+
+**Canonical source:** `src/skills/` is source of truth. `skills/` and `.agents/skills/` are install outputs — never edit them directly.
+
+**All new capabilities must be implemented as skills.** The loop, kanban, feature generation, and implementation are all skills — not standalone scripts.
 
 **Skills:**
-- `/loop` — runs the tuning loop, produces PATCH versions (`src/skills/loop/SKILL.md`)
-- `/kanban` — manages cards in `docs/vX_Y_Z/kanban/` (`src/skills/kanban/SKILL.md`)
-- `/add-new-features` — proposes and builds new features as MINOR versions (`src/skills/add-new-features/SKILL.md`)
+- `/clawdbrt:loop` — runs the tuning loop, produces PATCH versions (`src/skills/loop/SKILL.md`)
+- `/clawdbrt:kanban` — manages cards in `docs/vX_Y_Z/kanban/` (`src/skills/kanban/SKILL.md`)
+- `/clawdbrt:add-new-features` — proposes and builds new features as MINOR versions (`src/skills/add-new-features/SKILL.md`)
+- `/clawdbrt:implement` — reads kanban board, implements cards by priority with parallel agents (`src/skills/implement/SKILL.md`)
 
 ---
 
@@ -78,17 +83,17 @@ section-scoped tuner → new AGENTS.md → repeat
 ```
 
 **Always check the latest version directory first** for specs and reference implementations:
-1. `docs/v0_4_2/specs/` (current version — use this first)
+1. Latest `docs/vX_Y_Z/specs/` (sort directories, pick highest version)
 2. Fall back to older `docs/vX_Y_Z/specs/` only if the file doesn't exist in the latest version
 
-Reference implementation: `docs/v0_4_2/specs/agents-proto.md` → fallback `docs/v0_0_0/specs/agents-proto.md`
+Reference implementation: latest `docs/vX_Y_Z/specs/agents-proto.md` → fallback to older versions
 
 ---
 
 ## Tuning Rules
 
 - **Exact CLI commands over prose.** `npx jest --testPathPattern=src` not "run the tests."
-- **File paths over vague references.** `./docs/v0_0_0/specs/` not "the specs directory."
+- **File paths over vague references.** `./docs/vX_Y_Z/specs/` not "the specs directory."
 - **Non-discoverable information only.** If readable from `README.md` or source, cut it.
 - **Under 700 words.** Sections over 100 words get scrutinized.
 - **Never full-rewrite sections scoring ≥ 0.8.** Targeted edits only — full rewrites cause regressions.
@@ -105,11 +110,20 @@ Reference implementation: `docs/v0_4_2/specs/agents-proto.md` → fallback `docs
 - ✅ Always: route failures to the specific section responsible, not the whole document
 - ✅ Always: `git commit` immediately after every version update — no uncommitted versions
 - ✅ Always: complete `docs/vX_Y_Z/README.md` before committing a version — no commit without README
+- ✅ Always: create/edit skills in `src/skills/{name}/SKILL.md`, then run `npx skills add ./src/skills --all -y`
+- ✅ Always: spawn parallel agents for independent kanban cards — do not work them sequentially
+- ✅ Always: follow version workflow: SPEC.md → kanban cards → copy icebox from prior version → work cards → README.md → CHANGELOG.md → bump version → commit
+- ✅ Always: `/clawdbrt:loop` bumps PATCH only. `/clawdbrt:add-new-features` bumps MINOR only. MAJOR requires explicit human decision.
+- ✅ Always: before implementing any capability, check if an installed tool already does it — read its docs first
+- ✅ Always: ticket filenames use `clwdi-v{MAJOR}_{MINOR}_{PATCH}-{NNN}.md`. Moving a ticket renames it to the target version prefix. Each new version's kanban copies the prior version's `icebox.md`.
 - ⚠️ Ask first: adding new task types to the evaluation suite
 - ⚠️ Ask first: changing the judge scoring threshold below 0.7
 - 🚫 Never: rewrite sections already converged (score ≥ 0.95 across 3+ iterations)
 - 🚫 Never: remove the Boundaries section
 - 🚫 Never: make this file longer than it currently is without explicit instruction
+- 🚫 Never: use markdown checklists or TaskCreate tools for work tracking — use `docs/vX_Y_Z/kanban/` cards
+- 🚫 Never: edit files in `skills/`, `.agents/`, or agent-specific skill dirs directly — `src/skills/` is source of truth
+- 🚫 Never: auto-bump MAJOR version — requires explicit human decision
 
 ---
 
@@ -142,4 +156,4 @@ Stop at `avg_score >= 0.95` or 20 iterations. Plot the curve.
 - **RISE** — Qu et al., 2024
 - **Recursive Language Models** — Zhang, Kraska, Khattab, Dec 2025 (arxiv.org/abs/2512.24601)
 - **Evaluating AGENTS.md** — arxiv.org/abs/2602.11988
-- **Engineering Guide** — `docs/v0_0_0/specs/agents_md_engineering_guide.md`
+- **Engineering Guide** — latest `docs/vX_Y_Z/specs/agents_md_engineering_guide.md`
