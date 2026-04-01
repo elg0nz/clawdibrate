@@ -1,6 +1,6 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.4.0** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.4.1** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **MAJOR** = loop contract breaks, **MINOR** = new sections/rules, **PATCH** = wording fixes.
 
@@ -47,9 +47,9 @@ python loop.py --history              # score history across versions
 
 ## Skills
 
-Slash commands (`/loop`, `/kanban`) route to `SKILL.md` files in `skills/`.
+Slash commands (`/loop`, `/kanban`) route to `SKILL.md` files in `src/skills/`.
 
-**Registration:** One directory per skill in `skills/`, each containing a `SKILL.md` with YAML frontmatter.
+**Registration:** One directory per skill in `src/skills/`, each containing a `SKILL.md` with YAML frontmatter. Run `npx skills add ./src/skills --all -y` to distribute.
 
 **Interface:** Every skill must have `name` and `description` in frontmatter. The body is agent instructions.
 

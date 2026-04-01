@@ -5,10 +5,10 @@ Type `/loop` in any agent CLI to auto-improve. Type `/add-new-features` to exten
 ## What Shipped
 
 - **`/add-new-features` skill** — meta-skill that proposes features, creates kanban cards, spawns agents to implement
-- **`npx skills add ./skills --all -y` in Setup** — first thing any agent does on bootstrap
+- **`npx skills add ./src/skills --all -y` in Setup** — first thing any agent does on bootstrap
 - **`/loop` produces PATCH versions only** — MINOR/MAJOR require human decision
 - **Skills installed to all 45 agents** — Claude Code, Codex, Cursor, Cline, OpenCode, and 40 more via vercel-labs/skills
-- **`skills/` is source of truth** — `.agents/skills/` and agent dirs symlink back
+- **`src/skills/` is source of truth** — `npx skills add ./src/skills --all -y` distributes to all agents
 
 ## Contents
 

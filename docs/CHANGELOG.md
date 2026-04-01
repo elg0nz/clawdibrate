@@ -15,12 +15,12 @@ for tracking AGENTS.md versions.
 
 ### Added
 - **`/add-new-features` skill** — meta-skill for proposing and building new features as MINOR versions
-- **`npx skills add ./skills --all -y`** as first step in AGENTS.md Setup — bootstraps skills to all 45 agents
+- **`npx skills add ./src/skills --all -y`** as first step in AGENTS.md Setup — bootstraps skills to all 45 agents
 - **Version semantics enforced** — `/loop` produces PATCH only, `/add-new-features` produces MINOR, MAJOR is human-only
 
 ### Changed
 - Skills section updated: lists `/loop`, `/kanban`, `/add-new-features` with version semantics
-- `skills/` is now canonical source of truth — `.agents/skills/` symlinks from it via `npx skills add`
+- `src/skills/` is now canonical source of truth — `npx skills add ./src/skills --all -y` distributes to all agents
 - `/loop` SKILL.md explicitly states each iteration is a PATCH version
 
 ## [0.3.0] - 2026-04-01
