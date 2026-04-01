@@ -21,8 +21,9 @@ The loop skill now operates on transcript evidence, not synthetic tasks.
 
 ## Steps
 
-1. Ensure transcripts exist in `.clawdibrate/transcripts/` or point to one with `--transcript`
-2. Run `python -m clawdibrate` (or `python -m clawdibrate --agent codex`)
+1. Ensure the target repo has an `AGENTS.md` and transcripts in `.clawdibrate/transcripts/`, or point to one with `--transcript`
+   If no real transcripts exist yet, bootstrap one first with `python -m clawdibrate --repo /abs/path/to/repo --synthesize-git-history`.
+2. Run `python -m clawdibrate` in that repo, or use `python -m clawdibrate --repo /abs/path/to/repo`
 3. For each transcript:
    - Compute deterministic waste metrics
    - Run bug-identifier, then judge, then implementer
@@ -34,6 +35,7 @@ The loop skill now operates on transcript evidence, not synthetic tasks.
 
 - `/clawdbrt:loop` — calibrate from recorded transcripts
 - `python -m clawdibrate --dry-run` — show what would run without editing `AGENTS.md`
+- `python -m clawdibrate --repo /abs/path/to/repo` — target a different repository root
 - `python -m clawdibrate --transcript PATH` — calibrate from one transcript file
 
 ## Key Rules

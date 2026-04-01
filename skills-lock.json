@@ -24,7 +24,12 @@
     "clawdbrt:loop": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "8347500a945e649a61729f5bd0dd62b67e4ae2113fea2d9ef8c376ac1cf15fd7"
+      "computedHash": "4567a075bc34f0cd7533d8614fbfb85b7049bffd3ff16b53252b028a2c4aa609"
+    },
+    "clawdbrt:record-from-git": {
+      "source": "/Users/gonz/Code/clawdibrate/src/skills",
+      "sourceType": "local",
+      "computedHash": "be07bc0d9e0e78cd3af6fa6d4a1ad0cc71629c80c19919f549e992ad38625766"
     },
     "clawdbrt:record-start": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",

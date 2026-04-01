@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clawdibrate"
+version = "0.6.0"
+description = "Transcript-based AGENTS.md calibration"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+  { name = "elg0nz" }
+]
+dependencies = []
+
+[project.scripts]
+clawdibrate = "clawdibrate.__main__:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["clawdibrate*"]
+
+[tool.setuptools.package-data]
+clawdibrate = ["prompts/*.md"]

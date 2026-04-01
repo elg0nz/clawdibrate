@@ -9,15 +9,13 @@ Usage:
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-AGENTS_MD_PATH = Path("AGENTS.md")
-TRANSCRIPTS_DIR = Path(".clawdibrate/transcripts")
-HISTORY_DIR = Path(".clawdibrate/history")
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 # Agent CLI templates. {system_prompt} = shell-quoted path to system prompt file, {prompt} = shell-quoted user prompt text.
@@ -229,8 +227,28 @@ def extract_json(text: str):
 # AGENTS.md manipulation
 # ---------------------------------------------------------------------------
 
-def read_agents_md() -> str:
-    return AGENTS_MD_PATH.read_text()
+def resolve_repo_root(repo_root: Path | None = None) -> Path:
+    """Resolve the target repo root that contains AGENTS.md."""
+    if repo_root is None:
+        repo_root = Path.cwd()
+    repo_root = repo_root.resolve()
+    agents_md = repo_root / "AGENTS.md"
+    if not agents_md.exists():
+        raise FileNotFoundError(f"No AGENTS.md found at {agents_md}")
+    return repo_root
+
+
+def repo_paths(repo_root: Path) -> dict[str, Path]:
+    """Return key repo-local paths used by the calibrator."""
+    return {
+        "agents_md": repo_root / "AGENTS.md",
+        "transcripts_dir": repo_root / ".clawdibrate" / "transcripts",
+        "history_dir": repo_root / ".clawdibrate" / "history",
+    }
+
+
+def read_agents_md(agents_md_path: Path) -> str:
+    return agents_md_path.read_text()
 
 
 def extract_section(agents_md: str, section_name: str) -> str:
@@ -250,38 +268,41 @@ def replace_section(agents_md: str, section_name: str, new_content: str) -> str:
     )
 
 
-def save_versioned_agents_md(agents_md: str):
+def save_versioned_agents_md(repo_root: Path, agents_md: str):
     """Save AGENTS_vN.md before overwriting."""
-    existing = sorted(Path(".").glob("AGENTS_v*.md"), key=lambda p: int(p.stem.replace("AGENTS_v", "") or 0))
+    existing = sorted(
+        repo_root.glob("AGENTS_v*.md"),
+        key=lambda p: int(p.stem.replace("AGENTS_v", "") or 0),
+    )
     n = (int(existing[-1].stem.replace("AGENTS_v", "")) + 1) if existing else 1
-    Path(f"AGENTS_v{n}.md").write_text(agents_md)
+    (repo_root / f"AGENTS_v{n}.md").write_text(agents_md)
 
 
 # ---------------------------------------------------------------------------
 # Persistence
 # ---------------------------------------------------------------------------
 
-def load_reflections() -> list[dict]:
-    path = HISTORY_DIR / "reflections.jsonl"
+def load_reflections(history_dir: Path) -> list[dict]:
+    path = history_dir / "reflections.jsonl"
     if not path.exists():
         return []
     return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
-def save_reflection(entry: dict):
-    HISTORY_DIR.mkdir(parents=True, exist_ok=True)
-    with open(HISTORY_DIR / "reflections.jsonl", "a") as f:
+def save_reflection(history_dir: Path, entry: dict):
+    history_dir.mkdir(parents=True, exist_ok=True)
+    with open(history_dir / "reflections.jsonl", "a") as f:
         f.write(json.dumps(entry) + "\n")
 
 
-def save_score(entry: dict):
-    HISTORY_DIR.mkdir(parents=True, exist_ok=True)
-    with open(HISTORY_DIR / "scores.jsonl", "a") as f:
+def save_score(history_dir: Path, entry: dict):
+    history_dir.mkdir(parents=True, exist_ok=True)
+    with open(history_dir / "scores.jsonl", "a") as f:
         f.write(json.dumps(entry) + "\n")
 
 
-def load_baselines() -> dict:
-    path = HISTORY_DIR / "baselines.jsonl"
+def load_baselines(history_dir: Path) -> dict:
+    path = history_dir / "baselines.jsonl"
     if not path.exists():
         return {}
     baselines = {}
@@ -292,9 +313,9 @@ def load_baselines() -> dict:
     return baselines
 
 
-def save_baseline(entry: dict):
-    HISTORY_DIR.mkdir(parents=True, exist_ok=True)
-    with open(HISTORY_DIR / "baselines.jsonl", "a") as f:
+def save_baseline(history_dir: Path, entry: dict):
+    history_dir.mkdir(parents=True, exist_ok=True)
+    with open(history_dir / "baselines.jsonl", "a") as f:
         f.write(json.dumps(entry) + "\n")
 
 
@@ -318,24 +339,39 @@ def is_converged(section_name: str, reflections: list[dict], threshold: float = 
 # Main calibration loop
 # ---------------------------------------------------------------------------
 
-def calibrate(agent: str = "claude", transcript_path: Path | None = None, dry_run: bool = False):
+def calibrate(
+    agent: str = "claude",
+    transcript_path: Path | None = None,
+    repo_root: Path | None = None,
+    dry_run: bool = False,
+):
     """Run one calibration pass: identify → judge → implement → persist."""
-    agents_md = read_agents_md()
-    reflections = load_reflections()
+    repo_root = resolve_repo_root(repo_root)
+    paths = repo_paths(repo_root)
+    agents_md_path = paths["agents_md"]
+    transcripts_dir = paths["transcripts_dir"]
+    history_dir = paths["history_dir"]
+
+    agents_md = read_agents_md(agents_md_path)
+    reflections = load_reflections(history_dir)
 
     # Discover transcripts
     if transcript_path:
-        transcripts = [transcript_path]
+        transcript = transcript_path if transcript_path.is_absolute() else (repo_root / transcript_path)
+        transcripts = [transcript.resolve()]
     else:
-        transcripts = sorted(TRANSCRIPTS_DIR.glob("*.jsonl")) if TRANSCRIPTS_DIR.exists() else []
+        transcripts = sorted(transcripts_dir.glob("*.jsonl")) if transcripts_dir.exists() else []
 
     if not transcripts:
-        print("No transcripts found. Run /clawdbrt:record-start before working, then /clawdbrt:record-stop.", file=sys.stderr)
+        print(
+            f"No transcripts found in {transcripts_dir}. Run /clawdbrt:record-start before working, then /clawdbrt:record-stop.",
+            file=sys.stderr,
+        )
         return
 
     all_failures: list[dict] = []
     section_scores: dict[str, list[float]] = {}
-    baselines = load_baselines()
+    baselines = load_baselines(history_dir)
     all_deltas: list[dict] = []
 
     for transcript_path in transcripts:
@@ -353,7 +389,7 @@ def calibrate(agent: str = "claude", transcript_path: Path | None = None, dry_ru
                 "metrics": metrics,
                 "context": "empty",
             }
-            save_baseline(baseline_entry)
+            save_baseline(history_dir, baseline_entry)
             baselines[transcript_key] = baseline_entry
             print(f"  baseline saved (first run, empty-context)")
 
@@ -456,8 +492,8 @@ def calibrate(agent: str = "claude", transcript_path: Path | None = None, dry_ru
 
     # Persist
     if updated_agents_md != agents_md:
-        save_versioned_agents_md(agents_md)
-        AGENTS_MD_PATH.write_text(updated_agents_md)
+        save_versioned_agents_md(repo_root, agents_md)
+        agents_md_path.write_text(updated_agents_md)
         print("\n✓ AGENTS.md updated")
 
     # Compute and log aggregate section scores
@@ -479,8 +515,16 @@ def calibrate(agent: str = "claude", transcript_path: Path | None = None, dry_ru
         "avg_score": avg,
         "delta_over_baseline": agg_delta,
     }
-    save_reflection(reflection_entry)
-    save_score({"timestamp": reflection_entry["timestamp"], "avg": avg, "sections": agg_scores, "delta_over_baseline": agg_delta})
+    save_reflection(history_dir, reflection_entry)
+    save_score(
+        history_dir,
+        {
+            "timestamp": reflection_entry["timestamp"],
+            "avg": avg,
+            "sections": agg_scores,
+            "delta_over_baseline": agg_delta,
+        },
+    )
 
     print(f"\nCalibration complete | avg={avg} | failures={len(all_failures)} | sections={agg_scores}")
     if agg_delta:

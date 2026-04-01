@@ -21,19 +21,18 @@ Output ONLY the new section content as plain text — no JSON wrapper, no sectio
 
 Example input section:
 ```
-- ✅ Always: use the latest `docs/vX_Y_Z/` directory first
+- Use the repo's canonical test command, not an inferred variant.
 ```
 
 Example failure:
 ```
-"failure": "Searched for ticket naming convention",
-"suggested_fix": "Add explicit example: clwdi-v{M}_{m}_{P}-{NNN}.md"
+"failure": "Agent guessed the test command and used the wrong flag",
+"suggested_fix": "Add the exact supported test command and flag syntax"
 ```
 
 Example output:
 ```
-- ✅ Always: use the latest `docs/vX_Y_Z/` directory first for specs, kanban, and references
-- ✅ Always: ticket filenames use `clwdi-v{MAJOR}_{MINOR}_{PATCH}-{NNN}.md` (zero-padded, e.g., `clwdi-v0_6_0-003.md`)
+- Use `pytest -q tests/unit` for the unit suite; do not infer alternate test flags.
 ```
 
 ---
@@ -41,13 +40,14 @@ Example output:
 ## Tuning rules (MUST follow)
 
 - **Exact CLI commands over prose.** `npx jest --testPathPattern=src` not "run the tests."
-- **File paths over vague references.** `./docs/vX_Y_Z/specs/` not "the specs directory."
+- **File paths over vague references.** Use concrete repo-local paths when they are non-discoverable.
 - **Non-discoverable information only.** If readable from `README.md` or source, cut it.
 - **Under 100 words per section.** Scrutinize anything longer.
 - **Never full-rewrite sections scoring ≥ 0.95 across 3+ runs.** Targeted edits only.
 - **Penalize verbosity.** Each added line must prevent a specific identified failure.
 - **Do not add generalities.** "Be careful" or "think first" are not system prompt instructions.
 - **One failure = at most one line.** If a failure requires a paragraph to fix, AGENTS.md can't fix it.
+- **Stay repository-specific.** Only use commands, paths, naming rules, and tools evidenced by the current AGENTS.md or the scored failures.
 
 ---
 

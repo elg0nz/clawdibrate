@@ -12,12 +12,19 @@ npx skills add ./src/skills --all -y
 # ...do normal work...
 /clawdbrt:record-stop
 
-# Calibrate from all recorded transcripts
+# Install once, then run against any repo with an AGENTS.md
+python -m pip install -e .
+
+# Calibrate from all recorded transcripts in the current repo
 python -m clawdibrate
 
-# Or target one transcript and one agent explicitly
-python -m clawdibrate --agent codex --transcript .clawdibrate/transcripts/example.jsonl
-python -m clawdibrate calibrate --dry-run
+# Or target a different repo and transcript explicitly
+python -m clawdibrate --repo ~/Code/other-repo --agent codex
+python -m clawdibrate --repo ~/Code/other-repo --transcript .clawdibrate/transcripts/example.jsonl
+python -m clawdibrate --repo ~/Code/other-repo calibrate --dry-run
+
+# Bootstrap a synthetic transcript from git history when recordings do not exist
+python -m clawdibrate --repo ~/Code/other-repo --synthesize-git-history --git-files AGENTS.md CLAUDE.md
 ```
 
 ## How It Works
@@ -26,15 +33,18 @@ python -m clawdibrate calibrate --dry-run
 transcript -> deterministic metrics -> bug-identifier -> judge -> implementer -> updated AGENTS.md
 ```
 
-The canonical implementation lives in [clawdibrate/orchestrator.py](/Users/gonz/Code/clawdibrate/clawdibrate/orchestrator.py). Meta-prompts live in [clawdibrate/prompts/bug-identifier.md](/Users/gonz/Code/clawdibrate/clawdibrate/prompts/bug-identifier.md), [clawdibrate/prompts/judge.md](/Users/gonz/Code/clawdibrate/clawdibrate/prompts/judge.md), and [clawdibrate/prompts/implementer.md](/Users/gonz/Code/clawdibrate/clawdibrate/prompts/implementer.md).
+The canonical implementation lives in `clawdibrate/orchestrator.py`. Meta-prompts live in `clawdibrate/prompts/bug-identifier.md`, `clawdibrate/prompts/judge.md`, and `clawdibrate/prompts/implementer.md`.
 
 ## Commands
 
 ```bash
 python -m clawdibrate
 python -m clawdibrate --agent codex
-python -m clawdibrate --transcript .clawdibrate/transcripts/session.jsonl
+python -m clawdibrate --repo ~/Code/other-repo
+python -m clawdibrate --repo ~/Code/other-repo --transcript .clawdibrate/transcripts/session.jsonl
 python -m clawdibrate calibrate --dry-run
+
+If your Python scripts directory is on `PATH`, the installed `clawdibrate` console command is equivalent.
 ```
 
 ## Skills
@@ -44,6 +54,7 @@ python -m clawdibrate calibrate --dry-run
 | `/clawdbrt:loop` | Run transcript-based calibration on recorded sessions |
 | `/clawdbrt:record-start` | Start recording the current session to `.clawdibrate/transcripts/` |
 | `/clawdbrt:record-stop` | Finalize the active transcript and summarize it |
+| `/clawdbrt:record-from-git` | Bootstrap a transcript from recent git history touching prompt files |
 | `/clawdbrt:kanban` | Manage cards in `docs/vX_Y_Z/kanban/` |
 | `/clawdbrt:add-new-features` | Propose and build new features (MINOR version) |
 | `/clawdbrt:implement` | Read kanban board and implement cards by priority |

@@ -3,6 +3,7 @@
 .clawdibrate/
 __pycache__/
 *.py[cod]
+*.egg-info/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -17,9 +18,7 @@ AGENTS_v*.md
 .adal/
 .augment/
 .bob/
-.claude/skills/loop
-.claude/skills/kanban
-.claude/skills/add-new-features
+.claude/skills/
 .codebuddy/
 .commandcode/
 .continue/

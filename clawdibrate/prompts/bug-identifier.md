@@ -12,11 +12,12 @@ You will receive:
 1. **AGENTS.md** — the current system prompt being evaluated
 2. **Transcript** — a real agent conversation (tool calls, results, user messages)
 3. **Deterministic metrics** (pre-computed by orchestrator):
-   - `total_tool_calls`: total Glob/Grep/Read/Edit/Write/Bash invocations
-   - `search_before_act_ratio`: (Glob+Grep+Read) / (Edit+Write+Bash)
-   - `user_correction_count`: times user corrected agent behavior
-   - `repetition_score`: fraction of repeated tool patterns in sliding window
-   - `tokens_estimated`: rough token count for the session
+   - `token_efficiency`
+   - `search_waste_ratio`
+   - `correction_rate`
+   - `repetition_score`
+   - `success_rate`
+   - plus supporting raw counts for context
 
 ---
 
