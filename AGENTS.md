@@ -1,6 +1,6 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.4.1** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.4.2** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **MAJOR** = loop contract breaks, **MINOR** = new sections/rules, **PATCH** = wording fixes.
 

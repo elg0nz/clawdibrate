@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 for tracking AGENTS.md versions.
 
+## [0.4.2] - 2026-04-01
+
+### Fixed
+- **Untracked `skills/` from git index** — two SKILL.md files were added before the `.gitignore` rule existed, so `npx skills add` clobbered them and created phantom deletes in `git status`. This broke a Codex `/loop` run that stalled on the dirty working tree.
+- **Corrected all `skills/` → `src/skills/` references** — AGENTS.md (skill router lines), CHANGELOG, and v0.4.0 README still said `skills/` was canonical. Fixed to `src/skills/` everywhere.
+- **Gitignored `.conversations/`** — session JSONL logs are local runtime data, not source. Untracked the bootstrap log and added `.conversations/` to `.gitignore`.
+- **Backfilled conversation logs** — logged the v0.2.0→v0.4.0 skills architecture session and the v0.4.1 bugfix session to `.conversations/`
+
 ## [0.4.1] - 2026-04-01
 
 ### Fixed
