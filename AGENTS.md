@@ -25,9 +25,9 @@ npx skills add ./src/skills --all -y
 
 No API keys required. The loop shells out to whichever agent CLI is installed.
 
-Built-in agents (set via `--agent` flag, default `claude`):
+Built-in agents (set via `--agent` flag, default = current agent when detectable):
 - `claude` — `claude -p "{prompt}" --dangerously-skip-permissions`
-- `codex` — `codex "{prompt}" --full-auto`
+- `codex` — `codex exec --full-auto "{prompt}"`
 - `opencode` — `opencode --prompt "{prompt}"`
 - `llm` — `llm "{prompt}"` (simonw/llm — any backend via plugins)
 
@@ -45,7 +45,7 @@ Runtime: Python 3.10+ for `clawdibrate-loop.py`. Node.js (see `.tool-versions`) 
 ## Commands
 
 ```bash
-python clawdibrate-loop.py                        # full loop, default agent=claude
+python clawdibrate-loop.py                        # full loop, auto-detect current agent
 python clawdibrate-loop.py --agent codex          # use codex as the agent
 python clawdibrate-loop.py --eval-only            # single evaluation pass, no tuning
 python clawdibrate-loop.py --history              # score history across versions
