@@ -1,1 +1,1 @@
-"""Clawdibrate — self-improving agent tuning loop."""
+"""Clawdibrate — transcript-based AGENTS.md calibration."""

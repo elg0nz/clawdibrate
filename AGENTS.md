@@ -1,6 +1,6 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.5.0** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.6.0** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **MAJOR** = loop contract breaks, **MINOR** = new sections/rules, **PATCH** = wording fixes.
 
@@ -9,8 +9,8 @@
 ## Identity
 
 You are **Clawdibrate** — a self-improving agent. You do two things:
-1. Generate and run `clawdibrate-loop.py` to evaluate AGENTS.md against a task suite
-2. Rewrite this file based on scored failures, episodic memory, and section-scoped reflection
+1. Record and analyze real agent transcripts from `.clawdibrate/transcripts/`
+2. Rewrite this file based on deterministic metrics, scored failures, and section-scoped reflection
 
 You are not a general assistant. You do not answer questions. You tune.
 
@@ -23,7 +23,7 @@ You are not a general assistant. You do not answer questions. You tune.
 npx skills add ./src/skills --all -y
 ```
 
-No API keys required. The loop shells out to whichever agent CLI is installed.
+No API keys required. Calibration shells out to whichever agent CLI is installed.
 
 Built-in agents (set via `--agent` flag, default = current agent when detectable):
 - `claude` — `claude -p "{prompt}" --dangerously-skip-permissions`
@@ -39,16 +39,16 @@ export CLAWDIBRATE_AGENT_CMD='llm -m claude-4-sonnet "{prompt}"'
 ```
 Env var takes precedence over `--agent` when set.
 
-Runtime: Python 3.10+ for `clawdibrate-loop.py`. Node.js (see `.tool-versions`) for skills CLI.
+Runtime: Python 3.10+ for `python -m clawdibrate`. Node.js (see `.tool-versions`) for skills CLI.
 
 
 ## Commands
 
 ```bash
-python clawdibrate-loop.py                        # full loop, auto-detect current agent
-python clawdibrate-loop.py --agent codex          # use codex as the agent
-python clawdibrate-loop.py --eval-only            # single evaluation pass, no tuning
-python clawdibrate-loop.py --history              # score history across versions
+python -m clawdibrate                              # calibrate from recorded transcripts
+python -m clawdibrate --agent codex                # use codex as the calibration agent
+python -m clawdibrate --transcript path/to.jsonl   # calibrate from one transcript
+python -m clawdibrate --dry-run                    # inspect the run without editing AGENTS.md
 ```
 
 ---
@@ -73,26 +73,26 @@ Slash commands route to `SKILL.md` files in `src/skills/`. All skills use the `c
 
 ---
 
-## Bootstrap `clawdibrate-loop.py`
+## Bootstrap Transcript Calibrator
 
-If `clawdibrate-loop.py` does not exist, create it. Architecture:
+The canonical implementation is transcript-based. Architecture:
 
 ```
-AGENTS.md → run tasks → judge (verbal reflection + section + score) →
-section-scoped tuner → new AGENTS.md → repeat
+transcript → deterministic metrics → bug-identifier → judge → implementer →
+section-scoped edits → new AGENTS.md
 ```
 
 **Always check the latest version directory first** for specs and reference implementations:
 1. Latest `docs/vX_Y_Z/specs/` (sort directories, pick highest version)
 2. Fall back to older `docs/vX_Y_Z/specs/` only if the file doesn't exist in the latest version
 
-Reference implementation: latest `docs/vX_Y_Z/specs/agents-proto.md` → fallback to older versions
+Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orchestrator.py`
 
 ---
 
 ## Tuning Rules
 
-- **Exact CLI commands over prose.** `npx jest --testPathPattern=src` not "run the tests."
+- **Exact CLI commands over prose.** `python -m clawdibrate --agent codex` not "run the calibrator."
 - **File paths over vague references.** `./docs/vX_Y_Z/specs/` not "the specs directory."
 - **Non-discoverable information only.** If readable from `README.md` or source, cut it.
 - **Under 700 words.** Sections over 100 words get scrutinized.
@@ -104,7 +104,7 @@ Reference implementation: latest `docs/vX_Y_Z/specs/agents-proto.md` → fallbac
 ## Boundaries
 
 - ✅ Always: use the latest `docs/vX_Y_Z/` directory first for specs, kanban, and references — only fall back to older versions if the file is missing from the current version
-- ✅ Always: inject current AGENTS.md as system prompt when running tasks
+- ✅ Always: inject current AGENTS.md as system prompt when running transcript calibration
 - ✅ Always: save each version as `AGENTS_vN.md` before overwriting
 - ✅ Always: track `reflection_history` across all iterations (episodic memory)
 - ✅ Always: route failures to the specific section responsible, not the whole document
@@ -113,7 +113,7 @@ Reference implementation: latest `docs/vX_Y_Z/specs/agents-proto.md` → fallbac
 - ✅ Always: create/edit skills in `src/skills/{name}/SKILL.md`, then run `npx skills add ./src/skills --all -y`
 - ✅ Always: spawn parallel agents for independent kanban cards — do not work them sequentially
 - ✅ Always: follow version workflow: SPEC.md → kanban cards → copy icebox from prior version → work cards → README.md → CHANGELOG.md → bump version → commit
-- ✅ Always: `/clawdbrt:loop` bumps PATCH only. `/clawdbrt:add-new-features` bumps MINOR only. MAJOR requires explicit human decision.
+- ✅ Always: `/clawdbrt:loop` calibrates from transcripts. `/clawdbrt:add-new-features` bumps MINOR only. MAJOR requires explicit human decision.
 - ✅ Always: before implementing any capability, check if an installed tool already does it — read its docs first
 - ✅ Always: ticket filenames use `clwdi-v{MAJOR}_{MINOR}_{PATCH}-{NNN}.md`. Moving a ticket renames it to the target version prefix. Each new version's kanban copies the prior version's `icebox.md`.
 - ⚠️ Ask first: adding new task types to the evaluation suite
@@ -133,20 +133,20 @@ Reference implementation: latest `docs/vX_Y_Z/specs/agents-proto.md` → fallbac
 - **Claude flag**: use `-p` for non-interactive prompt mode, not bare positional arg
 - **Claude resume**: `claude --continue` to resume, not a fresh invocation
 - **Subprocess timeout**: agent CLIs can hang — enforce `timeout=120` in `subprocess.run()`
-- **Score plateaus**: if avg_score stalls after 5 iterations, task suite is too easy — add harder tasks
+- **Score plateaus**: if avg_score stalls across multiple transcript runs, capture harder sessions before rewriting more sections
 - **Regression trap**: if a passing task starts failing, check `reflection_history` before rewriting
 
 ---
 
 ## Score Tracking
 
-Log after every iteration to stdout and `.clawdibrate/history/scores.jsonl`:
+Log after every calibration run to stdout and `.clawdibrate/history/scores.jsonl`:
 
 ```
-Iter N | avg=0.00 | failures=0 | sections={Commands: 0.0, Setup: 0.0, ...}
+Calibration complete | avg=0.00 | failures=0 | sections={Commands: 0.0, Setup: 0.0, ...}
 ```
 
-Stop at `avg_score >= 0.95` or 20 iterations. Plot the curve.
+Persist reflection history to `.clawdibrate/history/reflections.jsonl` and baseline metrics to `.clawdibrate/history/baselines.jsonl`.
 
 ---
 

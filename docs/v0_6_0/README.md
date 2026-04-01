@@ -1,6 +1,6 @@
 # v0.6.0 — Transcript-based evaluation, delete and rebuild from scratch
 
-Replace the synthetic-task loop with transcript-based calibration. Delete all existing code (`clawdibrate/`, `clawdibrate-loop.py`). Three meta-prompts (bug-identifier, judge, implementer) as separate files, invoked via the user's CLI agent. Thin orchestrator passes data between them.
+Replace the synthetic-task loop with transcript-based calibration. Delete the legacy synthetic-loop code paths and `clawdibrate-loop.py`. Three meta-prompts (bug-identifier, judge, implementer) as separate files, invoked via the user's CLI agent. Thin orchestrator passes data between them.
 
 Core insight: the real signal is in agent conversation transcripts, not synthetic tasks. When an agent searches for something AGENTS.md should have told it, that's a measurable AGENTS.md failure — and a measurable token waste. Token reduction is the primary optimization target (aligned with AgentBench's finding that Task Limit Exceeded is the dominant failure mode).
 

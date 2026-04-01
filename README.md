@@ -1,99 +1,53 @@
 # Clawdibrate
 
-Self-tuning agent instruction optimizer. Evaluates `AGENTS.md` against a task suite, scores failures, and rewrites sections until convergence.
+Transcript-based AGENTS.md calibration. Clawdibrate reads real agent transcripts, computes deterministic waste metrics, asks three meta-prompts to identify failures and draft fixes, then rewrites the responsible AGENTS.md sections.
 
 ## Quickstart
 
 ```bash
-# Install skills to all detected agent CLIs
 npx skills add ./src/skills --all -y
 
-# Run the tuning loop (default agent: claude)
-python loop.py
+# Record a real session first
+/clawdbrt:record-start
+# ...do normal work...
+/clawdbrt:record-stop
 
-# Use a different built-in agent
-python loop.py --agent codex
-python loop.py --agent opencode
-python loop.py --agent llm
+# Calibrate from all recorded transcripts
+python -m clawdibrate
 
-# Use any CLI via env var
-export CLAWDIBRATE_AGENT_CMD="llm -m claude-4-sonnet {prompt}"
-python loop.py
+# Or target one transcript and one agent explicitly
+python -m clawdibrate --agent codex --transcript .clawdibrate/transcripts/example.jsonl
+python -m clawdibrate calibrate --dry-run
 ```
-
-## Agent CLI Support
-
-Clawdibrate shells out to agent CLIs — no API keys or SDKs needed.
-
-### Built-in agents
-
-| Agent | Command template |
-|-------|-----------------|
-| `claude` (default) | `claude -p {prompt} --dangerously-skip-permissions` |
-| `codex` | `codex {prompt} --full-auto` |
-| `opencode` | `opencode --prompt {prompt}` |
-| `llm` | `llm {prompt}` ([simonw/llm](https://github.com/simonw/llm) — any backend via plugins) |
-
-### Custom CLI
-
-Set `CLAWDIBRATE_AGENT_CMD` with a `{prompt}` placeholder to use any CLI:
-
-```bash
-# Use simonw/llm with a specific model
-export CLAWDIBRATE_AGENT_CMD="llm -m gpt-4o {prompt}"
-
-# Use any tool that accepts a prompt
-export CLAWDIBRATE_AGENT_CMD="my-custom-agent --input {prompt}"
-```
-
-The env var takes precedence over `--agent` when set.
 
 ## How It Works
 
-```
-AGENTS.md -> run tasks -> judge (verbal reflection + score) ->
-section-scoped tuner -> new AGENTS.md -> repeat
+```text
+transcript -> deterministic metrics -> bug-identifier -> judge -> implementer -> updated AGENTS.md
 ```
 
-Each iteration:
-1. Runs seed tasks with current `AGENTS.md` as the system prompt
-2. Judge scores each response (0.0-1.0) with verbal reflection
-3. Failures routed to the specific `AGENTS.md` section responsible
-4. Section-scoped edits applied (never full rewrites for sections scoring >= 0.8)
-5. Version saved, PATCH bumped, git committed
-
-Stops at `avg_score >= 0.95` or 20 iterations.
+The canonical implementation lives in [clawdibrate/orchestrator.py](/Users/gonz/Code/clawdibrate/clawdibrate/orchestrator.py). Meta-prompts live in [clawdibrate/prompts/bug-identifier.md](/Users/gonz/Code/clawdibrate/clawdibrate/prompts/bug-identifier.md), [clawdibrate/prompts/judge.md](/Users/gonz/Code/clawdibrate/clawdibrate/prompts/judge.md), and [clawdibrate/prompts/implementer.md](/Users/gonz/Code/clawdibrate/clawdibrate/prompts/implementer.md).
 
 ## Commands
 
 ```bash
-python loop.py                   # full self-improvement loop
-python loop.py --eval-only       # single evaluation pass, no tuning
-python loop.py --history         # score history across versions
-python loop.py --agent codex     # use a specific agent
+python -m clawdibrate
+python -m clawdibrate --agent codex
+python -m clawdibrate --transcript .clawdibrate/transcripts/session.jsonl
+python -m clawdibrate calibrate --dry-run
 ```
 
 ## Skills
 
 | Skill | Description |
 |-------|-------------|
-| `/clawdbrt:loop` | Run the tuning loop (PATCH version) |
+| `/clawdbrt:loop` | Run transcript-based calibration on recorded sessions |
+| `/clawdbrt:record-start` | Start recording the current session to `.clawdibrate/transcripts/` |
+| `/clawdbrt:record-stop` | Finalize the active transcript and summarize it |
 | `/clawdbrt:kanban` | Manage cards in `docs/vX_Y_Z/kanban/` |
 | `/clawdbrt:add-new-features` | Propose and build new features (MINOR version) |
 | `/clawdbrt:implement` | Read kanban board and implement cards by priority |
 
-<!-- TODO: Add sections below -->
-<!-- ## Architecture -->
-<!-- ## Contributing -->
-<!-- ## Score History / Results -->
-<!-- ## FAQ -->
-
 ## Version
 
-Current: **0.4.2** | [Changelog](./docs/CHANGELOG.md) | [AGENTS.md](./AGENTS.md)
-
-Semver: **MAJOR** = loop contract breaks, **MINOR** = new sections/rules, **PATCH** = wording fixes.
-
-## License
-
-<!-- TODO: Add license -->
+Current: **0.6.0** | [Changelog](./docs/CHANGELOG.md) | [AGENTS.md](./AGENTS.md)

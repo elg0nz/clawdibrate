@@ -1,48 +1,43 @@
 ---
 name: clawdbrt:loop
-description: Run the Clawdibrate self-improvement tuning loop. Evaluates AGENTS.md against a task suite, scores failures, and rewrites sections. Each iteration produces a PATCH version.
+description: Run transcript-based Clawdibrate calibration. Analyzes recorded sessions, scores AGENTS.md failures, and rewrites the responsible sections.
 ---
 
-# /loop — Self-Improvement Tuning Loop
+# /loop — Transcript-Based Calibration
 
-Run the Clawdibrate tuning loop to evaluate and improve AGENTS.md.
+Run Clawdibrate against recorded real-world transcripts to improve `AGENTS.md`.
 
 ## When to Use
 
-When the user types `/clawdbrt:loop` or asks to "tune", "evaluate", "improve AGENTS.md", or "run the loop".
+When the user types `/clawdbrt:loop` or asks to calibrate or improve `AGENTS.md` from real sessions.
 
 ## How It Works
 
-```
-AGENTS.md → run tasks → judge (verbal reflection + section + score) →
-section-scoped tuner → new AGENTS.md → repeat
+```text
+transcript → deterministic metrics → bug-identifier → judge → implementer → updated AGENTS.md
 ```
 
-**Each iteration produces a PATCH version** (e.g., 0.4.0 → 0.4.1 → 0.4.2). The loop never bumps MINOR or MAJOR — those require human decision.
+The loop skill now operates on transcript evidence, not synthetic tasks.
 
 ## Steps
 
-1. If `loop.py` does not exist, bootstrap it from `docs/v0_0_0/specs/agents-proto.md`
-2. Run `python loop.py` (or `python loop.py --agent codex` / `--agent opencode`)
-3. Each iteration:
-   - Runs seed tasks with current AGENTS.md as system prompt
-   - Judge scores each response (0.0–1.0) with verbal reflection
-   - Failures routed to the specific AGENTS.md section responsible
-   - Section-scoped edits applied (never full rewrites)
-   - Version saved as `AGENTS_vN.md`, PATCH version bumped
-   - `docs/CHANGELOG.md` updated with what changed
-   - `git commit` (per boundary rules)
-4. Stop at `avg_score >= 0.95` or 20 iterations
+1. Ensure transcripts exist in `.clawdibrate/transcripts/` or point to one with `--transcript`
+2. Run `python -m clawdibrate` (or `python -m clawdibrate --agent codex`)
+3. For each transcript:
+   - Compute deterministic waste metrics
+   - Run bug-identifier, then judge, then implementer
+   - Map failures to the responsible AGENTS.md section
+   - Rewrite only the implicated sections
+   - Persist baselines, reflections, and scores in `.clawdibrate/history/`
 
 ## Modes
 
-- `/clawdbrt:loop` — full self-improvement loop
-- `/loop --eval-only` — single evaluation pass, no tuning
-- `/loop --history` — show score history across versions
+- `/clawdbrt:loop` — calibrate from recorded transcripts
+- `python -m clawdibrate --dry-run` — show what would run without editing `AGENTS.md`
+- `python -m clawdibrate --transcript PATH` — calibrate from one transcript file
 
 ## Key Rules
 
-- Never rewrite sections scoring ≥ 0.8
-- Never rewrite converged sections (≥ 0.95 across 3+ iterations)
-- Track `reflection_history` across all iterations
-- Log to stdout and `scores.jsonl` after every iteration
+- Never rewrite converged sections (≥ 0.95 across 3+ runs)
+- Prefer deterministic metrics before model judgment
+- Track reflections and baselines in `.clawdibrate/history/`
