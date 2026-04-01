@@ -16,9 +16,45 @@ import os
 import sys
 import argparse
 import shutil
+import time
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
+
+
+# --- Logging Helpers ---
+
+DIM = "\033[2m"
+BOLD = "\033[1m"
+GREEN = "\033[32m"
+YELLOW = "\033[33m"
+RED = "\033[31m"
+CYAN = "\033[36m"
+RESET = "\033[0m"
+
+
+def _ts() -> str:
+    return datetime.now().strftime("%H:%M:%S")
+
+
+def log_phase(phase: str):
+    print(f"\n{BOLD}{CYAN}[{_ts()}] ▶ {phase}{RESET}")
+
+
+def log_step(msg: str):
+    print(f"  {DIM}[{_ts()}]{RESET} {msg}")
+
+
+def log_result(msg: str):
+    print(f"  {GREEN}✓{RESET} {msg}")
+
+
+def log_warn(msg: str):
+    print(f"  {YELLOW}⚠{RESET} {msg}")
+
+
+def log_error(msg: str):
+    print(f"  {RED}✗{RESET} {msg}")
 
 # --- Configuration ---
 
@@ -27,7 +63,7 @@ SECTIONS = [
     "Setup",
     "Commands",
     "Skills",
-    "Bootstrap loop.py",
+    "Bootstrap `clawdibrate-loop.py`",
     "Tuning Rules",
     "Boundaries",
     "Known Gotchas",
@@ -59,7 +95,7 @@ AGENT_ENV_MARKERS = {
 
 AGENTS_MD_PATH = Path("AGENTS.md")
 SCORES_PATH = Path(".clawdibrate/history/scores.jsonl")
-DEFAULT_ITERATIONS = 10
+DEFAULT_ITERATIONS = 20
 
 JUDGE_PROMPT = """You are a judge evaluating an AI agent's response to a task.
 
@@ -138,7 +174,7 @@ def resolve_agent(requested_agent: str | None) -> tuple[str, str]:
     return "claude", "default"
 
 
-def run_cli(agent: str, prompt: str) -> str:
+def run_cli(agent: str, prompt: str, label: str = "") -> str:
     """Shell out to agent CLI. No API keys needed.
 
     Resolution order:
@@ -152,31 +188,44 @@ def run_cli(agent: str, prompt: str) -> str:
             f"or use one of: {', '.join(AGENT_COMMANDS)}"
         )
     cmd = template.replace("{prompt}", shlex.quote(prompt))
+    if label:
+        log_step(f"Calling {agent}: {label}")
+    t0 = time.monotonic()
     try:
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=120)
+        elapsed = time.monotonic() - t0
         stdout = result.stdout.strip()
         stderr = result.stderr.strip()
         if result.returncode != 0:
             detail = stderr or stdout or "no output"
+            log_error(f"Agent returned exit={result.returncode} ({elapsed:.1f}s)")
             return f"[ERROR exit={result.returncode}: {detail}]"
         if stdout:
+            if label:
+                log_step(f"Got response ({elapsed:.1f}s, {len(stdout)} chars)")
             return stdout
         if stderr:
+            log_error(f"Agent returned stderr only ({elapsed:.1f}s)")
             return f"[ERROR stderr-only: {stderr}]"
+        log_error(f"Agent returned empty response ({elapsed:.1f}s)")
         return "[ERROR: empty response]"
     except subprocess.TimeoutExpired:
+        log_error(f"Agent timed out after 120s")
         return "[TIMEOUT]"
     except Exception as e:
+        log_error(f"Agent error: {e}")
         return f"[ERROR: {e}]"
 
 
 def validate_agent(agent: str):
     """Fail fast if the chosen agent cannot answer a trivial probe."""
-    probe = run_cli(agent, "Reply with exactly: OK")
+    log_phase(f"Validating agent: {agent}")
+    probe = run_cli(agent, "Reply with exactly: OK", label="probe")
     if probe.startswith("["):
         raise RuntimeError(f"Agent probe failed for {agent}: {probe}")
     if not probe.strip():
         raise RuntimeError(f"Agent probe failed for {agent}: empty response")
+    log_result(f"Agent {agent} is responsive")
 
 
 # --- Helpers ---
@@ -196,6 +245,20 @@ def extract_json(text: str) -> dict | None:
         except json.JSONDecodeError:
             pass
     return None
+
+
+def git_commit_version(version: str, iteration: int):
+    """Git commit AGENTS.md and its backup after a version bump."""
+    files = [str(AGENTS_MD_PATH), f"AGENTS_v{iteration}.md"]
+    try:
+        subprocess.run(["git", "add"] + files, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", f"loop iter {iteration}: AGENTS.md v{version}"],
+            check=True, capture_output=True,
+        )
+        log_result(f"Committed v{version}")
+    except subprocess.CalledProcessError as e:
+        log_warn(f"git commit failed: {e.stderr.decode().strip() if e.stderr else e}")
 
 
 def read_agents_md() -> str:
@@ -247,6 +310,7 @@ def log_scores(iteration: int, scores: dict, avg: float, failures: int):
         "section_scores": section_scores,
         "timestamp": datetime.now().isoformat(),
     }
+    SCORES_PATH.parent.mkdir(parents=True, exist_ok=True)
     with SCORES_PATH.open("a") as f:
         f.write(json.dumps(entry) + "\n")
 
@@ -269,7 +333,7 @@ def show_history():
 def run_agent(agent: str, agents_md: str, task: str) -> str:
     """Run a task with AGENTS.md as system prompt."""
     prompt = f"System instructions:\n{agents_md}\n\nTask:\n{task}"
-    return run_cli(agent, prompt)
+    return run_cli(agent, prompt, label=f"task: {task[:50]}")
 
 
 def judge(agent: str, agents_md: str, task: str, response: str) -> dict:
@@ -279,14 +343,21 @@ def judge(agent: str, agents_md: str, task: str, response: str) -> dict:
         task=task,
         response=response,
     )
-    raw = run_cli(agent, prompt)
+    raw = run_cli(agent, prompt, label="judge")
     result = extract_json(raw)
     if result and "score" in result:
         # Ensure affected_section is valid
         if result.get("affected_section") not in SECTIONS:
             result["affected_section"] = "Unknown"
+        score = result["score"]
+        section = result.get("affected_section", "?")
+        color = GREEN if score >= 0.8 else YELLOW if score >= 0.5 else RED
+        log_step(f"Score: {color}{score:.2f}{RESET} → section: {section}")
+        if score < 0.8 and result.get("reflection"):
+            log_step(f"  Reflection: {DIM}{result['reflection'][:120]}{RESET}")
         return result
     # Fallback: couldn't parse judge output
+    log_warn(f"Judge output unparseable, defaulting to 0.0")
     return {
         "score": 0.0,
         "reflection": f"Judge output unparseable: {raw[:200]}",
@@ -299,27 +370,32 @@ def tune_section(agent: str, agents_md: str, section_name: str,
     """Rewrite a single section based on its failures."""
     section_content = extract_section(agents_md, section_name)
     if not section_content:
-        return agents_md  # Section not found, skip
+        log_warn(f"Section '{section_name}' not found, skipping")
+        return agents_md
 
+    log_step(f"Rewriting '{section_name}' ({len(failures)} failure(s), {len(section_content)} chars)")
     prompt = TUNER_PROMPT.format(
         section_name=section_name,
         section_content=section_content,
         failures_json=json.dumps(failures, indent=2),
         history_json=json.dumps(reflection_history[-10:], indent=2),  # Last 10 entries
     )
-    new_content = run_cli(agent, prompt)
+    new_content = run_cli(agent, prompt, label=f"tune: {section_name}")
     if new_content and not new_content.startswith("["):
+        log_result(f"Rewrote '{section_name}' ({len(section_content)} → {len(new_content)} chars)")
         return replace_section(agents_md, section_name, new_content)
+    log_warn(f"Tuner returned no usable content for '{section_name}'")
     return agents_md
 
 
 def evaluate(agent: str, agents_md: str) -> tuple[list[dict], dict[str, float]]:
     """Run all tasks and judge them. Returns (results, section_scores)."""
+    log_phase(f"Evaluating {len(TASKS)} tasks")
     results = []
     section_scores = defaultdict(list)
 
-    for task in TASKS:
-        print(f"  Task: {task[:60]}...")
+    for i, task in enumerate(TASKS, 1):
+        print(f"\n  {BOLD}[{i}/{len(TASKS)}]{RESET} {task[:70]}")
         response = run_agent(agent, agents_md, task)
         judgment = judge(agent, agents_md, task, response)
 
@@ -394,13 +470,22 @@ def run_loop(agent: str, eval_only: bool = False, iterations: int = DEFAULT_ITER
     """Main tuning loop."""
     agents_md = read_agents_md()
     start_version = get_current_version(agents_md)
+    sv = f"{start_version[0]}.{start_version[1]}.{start_version[2]}"
     reflection_history = []
     converged_sections = defaultdict(list)  # section -> list of scores across iterations
     all_iter_results = []
+    loop_t0 = time.monotonic()
+
+    log_phase(f"Starting loop: AGENTS.md v{sv}, agent={agent}, max_iterations={iterations}")
+    if eval_only:
+        log_step("Mode: eval-only (no tuning)")
 
     for iteration in range(1, iterations + 1):
+        iter_t0 = time.monotonic()
+        cur_v = get_current_version(agents_md)
+        cur_vs = f"{cur_v[0]}.{cur_v[1]}.{cur_v[2]}"
         print(f"\n{'='*60}")
-        print(f"Iteration {iteration}/{iterations}")
+        print(f"{BOLD}Iteration {iteration}/{iterations}{RESET}  (v{cur_vs})")
         print(f"{'='*60}")
 
         # Evaluate
@@ -411,7 +496,12 @@ def run_loop(agent: str, eval_only: bool = False, iterations: int = DEFAULT_ITER
         avg_score = sum(all_scores) / len(all_scores) if all_scores else 0.0
         failures = sum(1 for s in all_scores if s < 0.8)
 
+        # Summary bar
+        log_phase("Results")
         log_scores(iteration, section_scores, avg_score, failures)
+        passing = len(all_scores) - failures
+        color = GREEN if avg_score >= 0.95 else YELLOW if avg_score >= 0.8 else RED
+        print(f"  {color}{'█' * int(avg_score * 20)}{'░' * (20 - int(avg_score * 20))}{RESET} {avg_score:.2f}  ({passing}/{len(all_scores)} pass)")
 
         if avg_score >= 0.95:
             all_iter_results.append({
@@ -421,7 +511,7 @@ def run_loop(agent: str, eval_only: bool = False, iterations: int = DEFAULT_ITER
                 "section_scores": dict(section_scores),
                 "tuned_sections": [],
             })
-            print("Converged.")
+            log_result(f"Converged at avg={avg_score:.2f}")
             break
 
         # Track convergence per section
@@ -438,10 +528,11 @@ def run_loop(agent: str, eval_only: bool = False, iterations: int = DEFAULT_ITER
 
         if eval_only:
             all_iter_results.append(iter_record)
-            print("\n--eval-only: stopping after single evaluation pass.")
+            log_step("--eval-only: stopping after single evaluation pass.")
             break
 
         # Collect failures by section
+        log_phase("Analyzing failures")
         section_failures = defaultdict(list)
         for r in results:
             if r["score"] < 0.8:
@@ -458,16 +549,24 @@ def run_loop(agent: str, eval_only: bool = False, iterations: int = DEFAULT_ITER
                     "score": r["score"],
                 })
 
+        if section_failures:
+            for sec, fails in section_failures.items():
+                avg_sec = sum(f["score"] for f in fails) / len(fails)
+                log_step(f"{sec}: {len(fails)} failure(s), avg={avg_sec:.2f}")
+        else:
+            log_step("No failures below 0.8 threshold")
+
         tunable_sections = []
         for section_name in section_failures:
             if section_name == "Unknown":
+                log_warn(f"Skipping 'Unknown' section (unmapped failures)")
                 continue
             history = converged_sections.get(section_name, [])
             if len(history) >= 3 and all(s >= 0.95 for s in history[-3:]):
-                print(f"  Skipping {section_name} (converged)")
+                log_step(f"Skipping {section_name} (converged ≥0.95 for 3+ iters)")
                 continue
             if section_scores.get(section_name, 0) >= 0.8:
-                print(f"  Skipping {section_name} (score >= 0.8)")
+                log_step(f"Skipping {section_name} (section score ≥0.8)")
                 continue
             tunable_sections.append(section_name)
 
@@ -477,11 +576,12 @@ def run_loop(agent: str, eval_only: bool = False, iterations: int = DEFAULT_ITER
             )
 
         if tunable_sections:
+            log_phase(f"Tuning {len(tunable_sections)} section(s): {', '.join(tunable_sections)}")
             save_version(agents_md, iteration)
+            log_step(f"Saved backup: AGENTS_v{iteration}.md")
 
         for section_name in tunable_sections:
             fails = section_failures[section_name]
-            print(f"  Tuning section: {section_name}")
             agents_md = tune_section(agent, agents_md, section_name, fails, reflection_history)
             iter_record["tuned_sections"].append(section_name)
 
@@ -490,14 +590,23 @@ def run_loop(agent: str, eval_only: bool = False, iterations: int = DEFAULT_ITER
         if iter_record["tuned_sections"]:
             agents_md = bump_patch_version(agents_md)
             AGENTS_MD_PATH.write_text(agents_md)
-            print(f"  Saved updated AGENTS.md")
+            new_v = get_current_version(agents_md)
+            new_vs = f"{new_v[0]}.{new_v[1]}.{new_v[2]}"
+            log_result(f"Bumped to v{new_vs}, saved AGENTS.md")
+            # Boundary rule: git commit immediately after every version update
+            git_commit_version(new_vs, iteration)
+
+        iter_elapsed = time.monotonic() - iter_t0
+        log_step(f"Iteration {iteration} completed in {iter_elapsed:.1f}s")
 
     # Generate docs folder with changelog
     end_version = get_current_version(read_agents_md())
     if not eval_only:
         generate_loop_docs(start_version, end_version, all_iter_results)
 
-    print("\nLoop complete.")
+    total_elapsed = time.monotonic() - loop_t0
+    ev = f"{end_version[0]}.{end_version[1]}.{end_version[2]}"
+    print(f"\n{BOLD}{GREEN}Loop complete.{RESET} v{sv} → v{ev} in {total_elapsed:.1f}s ({len(all_iter_results)} iteration(s))")
 
 
 # --- Entry Point ---
@@ -514,12 +623,15 @@ def main():
                         help="Show score history across versions")
     args = parser.parse_args()
 
+    print(f"\n{BOLD}clawdibrate-loop.py{RESET}")
+    print(f"{DIM}{'─' * 40}{RESET}")
+
     # CLAWDIBRATE_AGENT_CMD overrides --agent
     if os.environ.get("CLAWDIBRATE_AGENT_CMD"):
-        print(f"Using CLAWDIBRATE_AGENT_CMD: {os.environ['CLAWDIBRATE_AGENT_CMD']}")
+        log_step(f"CLAWDIBRATE_AGENT_CMD: {os.environ['CLAWDIBRATE_AGENT_CMD']}")
 
     agent, source = resolve_agent(args.agent)
-    print(f"Using agent: {agent} ({source})")
+    log_step(f"Agent: {BOLD}{agent}{RESET} ({source})")
 
     if args.history:
         show_history()
