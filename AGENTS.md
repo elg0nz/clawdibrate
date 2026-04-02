@@ -16,7 +16,7 @@ See `/clawdbrt:identity` for detailed guidance.
 ## Setup
 
 ```bash
-npx skills add ./src/skills --agent claude-code cursor codex --skill '*' -y
+npx skills add ./src/skills --agent claude-code cursor codex --skill '*' -y --global
 ```
 
 **Agent env:**
@@ -42,7 +42,7 @@ See `/clawdbrt:commands` for detailed guidance.
 
 ## Skills
 
-Skills route to `src/skills/<name>/SKILL.md` with `clawdbrt:` prefix. YAML frontmatter: `name: clawdbrt:<skill-name>`, `description`. Register: `npx skills add ./src/skills --agent <agents> --skill '*' -y`. Commit `skills-lock.json`, `skills/`, `.agents/`. Source: `src/skills/` only—never edit `skills/`/`.agents/skills/`. All capabilities must be skills.
+Skills route to `src/skills/<name>/SKILL.md` with `clawdbrt:` prefix. YAML frontmatter: `name: clawdbrt:<skill-name>`, `description`. Register: `npx skills add ./src/skills --agent <agents> --skill '*' -y --global`. Commit `skills-lock.json`, `skills/`, `.agents/`. Source: `src/skills/` only—never edit `skills/`/`.agents/skills/`. All capabilities must be skills.
 
 Core: `/clawdbrt:loop` (tuning), `/clawdbrt:kanban` (cards), `/clawdbrt:add-new-features` (proposals), `/clawdbrt:implement` (parallel), `/clawdbrt:scores` (scoreboard).
 
@@ -83,7 +83,7 @@ See `/clawdbrt:tuning-rules` for detailed guidance.
 - Route failures to specific section
 - `git commit` after version update
 - Complete `docs/vX_Y_Z/README.md` before commit
-- Skills: `src/skills/{name}/SKILL.md` → `npx skills add ./src/skills --agent <agents> --skill '*' -y`
+- Skills: `src/skills/{name}/SKILL.md` → `npx skills add ./src/skills --agent <agents> --skill '*' -y --global`
 - Spawn parallel agents for independent kanban cards
 - Don't read files if agent spawned to read them
 - Flow: SPEC.md → kanban → icebox → cards → README.md → CHANGELOG.md → bump → commit

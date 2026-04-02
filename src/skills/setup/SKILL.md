@@ -7,7 +7,7 @@ description: "Externalized AGENTS.md heading 'Setup' as clawdbrt:setup (clawdibr
 
 **Install skills first:**
 ```bash
-npx skills add ./src/skills --agent claude-code cursor codex --skill '*' -y
+npx skills add ./src/skills --agent claude-code cursor codex --skill '*' -y --global
 ```
 Only detected agents are targeted — clawdibrate auto-detects installed agent CLIs and config directories.
 
