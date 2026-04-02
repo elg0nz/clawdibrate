@@ -76,6 +76,8 @@ def main():
             print(f"Created pointer file: {result['created_pointer']}")
         if result.get("skills_installed"):
             print("Skills installed: record-start, record-stop, record-from-git, loop")
+        if result.get("permissions_configured"):
+            print("Permissions configured: .claude/settings.json")
         return
 
     if args.synthesize_git_history:

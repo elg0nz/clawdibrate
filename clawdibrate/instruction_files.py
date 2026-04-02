@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -114,6 +115,43 @@ def _install_bundled_skills(repo_root: Path) -> bool:
         return False
 
 
+CLAWDIBRATE_PERMISSIONS = [
+    "Bash(python -m clawdibrate:*)",
+    "Bash(npx skills add:*)",
+    "Bash(echo * >> .clawdibrate/:*)",
+]
+
+
+def _ensure_permissions(repo_root: Path) -> bool:
+    """Create or merge .claude/settings.json with clawdibrate permissions."""
+    claude_dir = repo_root / ".claude"
+    settings_path = claude_dir / "settings.json"
+
+    if settings_path.exists():
+        try:
+            settings = json.loads(settings_path.read_text())
+        except (json.JSONDecodeError, ValueError):
+            settings = {}
+    else:
+        settings = {}
+
+    permissions = settings.setdefault("permissions", {})
+    existing_allow = permissions.setdefault("allow", [])
+
+    added = False
+    for perm in CLAWDIBRATE_PERMISSIONS:
+        if perm not in existing_allow:
+            existing_allow.append(perm)
+            added = True
+
+    if not added:
+        return False
+
+    claude_dir.mkdir(parents=True, exist_ok=True)
+    settings_path.write_text(json.dumps(settings, indent=2) + "\n")
+    return True
+
+
 def ensure_clawdibrate_setup(repo_root: Path) -> dict:
     detected = detect_instruction_file(repo_root)
     if not detected:
@@ -153,9 +191,13 @@ def ensure_clawdibrate_setup(repo_root: Path) -> dict:
     # Install bundled skills into the target repo via `npx skills add`
     skills_installed = _install_bundled_skills(repo_root)
 
+    # Create or merge .claude/settings.json with pre-approved permissions
+    permissions_configured = _ensure_permissions(repo_root)
+
     return {
         "active_path": active_path,
         "created_pointer": created_pointer,
         "candidates": detected["candidates"],
         "skills_installed": skills_installed,
+        "permissions_configured": permissions_configured,
     }
