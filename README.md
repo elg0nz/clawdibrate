@@ -18,8 +18,11 @@ python -m pip install -e .
 # Configure a target repo to use clawdibrate
 python -m clawdibrate --repo ~/Code/other-repo --setup
 
-# Calibrate from all recorded transcripts in the current repo
+# Calibrate from all recorded transcripts in the current repo (default agent: Claude Code CLI)
 python -m clawdibrate
+
+# Use Cursor Agent for calibration instead of Claude Code
+export CLAWDIBRATE_AGENT=cursor
 
 # Or target a different repo and transcript explicitly
 python -m clawdibrate --repo ~/Code/other-repo --agent codex
@@ -46,8 +49,17 @@ python -m clawdibrate --agent codex
 python -m clawdibrate --repo ~/Code/other-repo
 python -m clawdibrate --repo ~/Code/other-repo --transcript .clawdibrate/transcripts/session.jsonl
 python -m clawdibrate calibrate --dry-run
+```
 
 If your Python scripts directory is on `PATH`, the installed `clawdibrate` console command is equivalent.
+
+Calibration shells out to an agent CLI. **Default is `claude`** (Claude Code). To run the loop with **Cursor Agent** (headless `cursor agent --print`), set:
+
+```bash
+export CLAWDIBRATE_AGENT=cursor
+```
+
+Use `cursor agent login` or `CURSOR_API_KEY` for authentication. You can also pass `--agent cursor` for a one-off run without changing your shell profile.
 
 ## Setup Convention
 
@@ -64,7 +76,6 @@ This repo uses clawdibrate to auto-improve its AGENTS.md or CLAUDE.md.
 ```
 
 If only one of `AGENTS.md` or `CLAUDE.md` exists, setup creates the missing counterpart as a pointer to the detected active file.
-```
 
 ## Skills
 

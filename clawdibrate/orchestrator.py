@@ -34,12 +34,55 @@ PROMPTS_DIR = Path(__file__).parent / "prompts"
 # llm: -s takes a string value; use command substitution to read file contents.
 # opencode: opencode run has no system prompt flag; prepend system prompt inline via stdin-style heredoc.
 # codex: codex exec has no system prompt flag; prepend system prompt inline in the prompt text.
+# cursor: headless Cursor Agent — system+user via printf like codex; --print --force for scripts (see `cursor agent --help`).
 AGENT_COMMANDS: dict[str, str] = {
     "claude": 'claude --system-prompt "$(cat {system_prompt})" -p {prompt} --dangerously-skip-permissions',
+    "cursor": (
+        'cursor agent --print --force --output-format text '
+        '"$(printf \'System instructions:\\n%s\\n\\nUser message:\\n%s\' "$(cat {system_prompt})" {prompt})"'
+    ),
     "llm": 'llm -s "$(cat {system_prompt})" {prompt}',
     "opencode": 'opencode run "$(printf \'System instructions:\\n%s\\n\\nUser message:\\n%s\' "$(cat {system_prompt})" {prompt})"',
     "codex": 'codex exec "$(printf \'System instructions:\\n%s\\n\\nUser message:\\n%s\' "$(cat {system_prompt})" {prompt})"',
 }
+
+
+def resolve_default_calibration_agent() -> str:
+    """Default calibration CLI: ``claude``, unless ``CLAWDIBRATE_AGENT`` is set."""
+    return os.environ.get("CLAWDIBRATE_AGENT", "claude")
+
+
+def _shell_safe_model_name(model: str) -> str:
+    """Allow only safe token characters for --model injection."""
+    return "".join(c for c in model if c.isalnum() or c in "-_.")
+
+
+def _cursor_model_cli_value(model: str) -> str:
+    """Map generic names to Cursor Agent's --model values when needed."""
+    key = model.lower().strip()
+    aliases = {
+        "sonnet": "sonnet-4",
+        "haiku": "sonnet-4",
+        "opus": "sonnet-4-thinking",
+    }
+    return aliases.get(key, model)
+
+
+def apply_builtin_model_flag(template: str, agent: str, model: str | None) -> str:
+    """Inject --model into built-in templates (skipped when CLAWDIBRATE_AGENT_CMD is set)."""
+    if not model or "--model" in template:
+        return template
+    safe = _shell_safe_model_name(_cursor_model_cli_value(model) if agent == "cursor" else model)
+    if not safe:
+        return template
+    if agent == "claude" and "claude" in template:
+        return template.replace(
+            "--dangerously-skip-permissions",
+            f"--model {safe} --dangerously-skip-permissions",
+        )
+    if agent == "cursor" and template.strip().startswith("cursor agent"):
+        return template.replace("cursor agent ", f"cursor agent --model {safe} ", 1)
+    return template
 
 
 # ---------------------------------------------------------------------------
@@ -284,18 +327,25 @@ def _shell_quote(s: str) -> str:
     return "'" + s.replace("'", "'\\''") + "'"
 
 
-def run_agent(agent: str, system_prompt_path: Path, prompt: str, timeout: int = 300) -> str:
+def run_agent(
+    agent: str,
+    system_prompt_path: Path,
+    prompt: str,
+    timeout: int = 300,
+    model: str | None = None,
+) -> str:
     """Invoke a CLI agent with a system prompt file and a user prompt. Returns stdout.
 
     Resolution order:
     1. CLAWDIBRATE_AGENT_CMD env var (template supporting {system_prompt} and {prompt} placeholders)
     2. Built-in AGENT_COMMANDS dict keyed by agent name
     """
-    import os
     env_cmd = os.environ.get("CLAWDIBRATE_AGENT_CMD")
     template = env_cmd or AGENT_COMMANDS.get(agent)
     if not template:
         raise ValueError(f"Unknown agent: {agent}. Set CLAWDIBRATE_AGENT_CMD or use: {list(AGENT_COMMANDS)}")
+    if not env_cmd:
+        template = apply_builtin_model_flag(template, agent, model)
 
     cmd = template.format(
         system_prompt=_shell_quote(str(system_prompt_path)),
@@ -771,7 +821,9 @@ def calibrate(
             print(f"\n  [stage 1/3] running bug-identifiers sequentially…")
             bug_results = []
             for task in bug_id_tasks:
-                raw = run_agent(agent, PROMPTS_DIR / "bug-identifier.md", task["prompt"])
+                raw = run_agent(
+                    agent, PROMPTS_DIR / "bug-identifier.md", task["prompt"], model=model
+                )
                 bug_results.append({"id": task["id"], "result": raw, "error": None})
 
         # Collect failures from bug-identification results
@@ -817,7 +869,7 @@ def calibrate(
             print(f"\n  [stage 2/3] running judge calls sequentially…")
             judge_results = []
             for task in judge_tasks:
-                raw = run_agent(agent, PROMPTS_DIR / "judge.md", task["prompt"])
+                raw = run_agent(agent, PROMPTS_DIR / "judge.md", task["prompt"], model=model)
                 judge_results.append({"id": task["id"], "result": raw, "error": None})
 
         for jr in judge_results:
@@ -907,7 +959,9 @@ def calibrate(
             print(f"\n  [stage 3/3] running implementer calls sequentially…")
             impl_results = []
             for task in impl_tasks:
-                raw = run_agent(agent, PROMPTS_DIR / "implementer.md", task["prompt"])
+                raw = run_agent(
+                    agent, PROMPTS_DIR / "implementer.md", task["prompt"], model=model
+                )
                 impl_results.append({"id": task["id"], "result": raw, "error": None})
 
         for ir in impl_results:

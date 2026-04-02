@@ -36,16 +36,11 @@ def run_worker(
     """
     import subprocess
 
-    from .orchestrator import _shell_quote
+    from .orchestrator import _shell_quote, apply_builtin_model_flag
 
     template = _resolve_agent_template(agent)
-
-    # Inject --model flag for claude agent if model is specified
-    if agent == "claude" and model and "--model" not in template:
-        template = template.replace(
-            "--dangerously-skip-permissions",
-            f"--model {model} --dangerously-skip-permissions",
-        )
+    if not os.environ.get("CLAWDIBRATE_AGENT_CMD"):
+        template = apply_builtin_model_flag(template, agent, model)
 
     # Write prompt to temp file to avoid shell argument length limits
     prompt_file = Path(f"/tmp/clawdibrate-prompt-{uuid.uuid4()}.txt")

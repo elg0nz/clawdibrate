@@ -25,7 +25,8 @@ npx skills add ./src/skills --all -y
 
 No API keys required. Calibration shells out to whichever agent CLI is installed.
 
-Built-in agents (set via `--agent` flag, default = current agent when detectable):
+Built-in agents (`--agent`; default = `claude`, or set `CLAWDIBRATE_AGENT` — e.g. `export CLAWDIBRATE_AGENT=cursor` for Cursor Agent CLI):
+- `cursor` — `cursor agent --print --force` (headless Cursor Agent); use `CURSOR_API_KEY` when not logged in via `cursor agent login`
 - `claude` — `claude -p "{prompt}" --dangerously-skip-permissions`
 - `codex` — `codex exec --full-auto "{prompt}"`
 - `opencode` — `opencode --prompt "{prompt}"`
@@ -46,6 +47,7 @@ Runtime: Python 3.10+ for `python -m clawdibrate`. Node.js (see `.tool-versions`
 
 ```bash
 python -m clawdibrate                              # calibrate from recorded transcripts
+python -m clawdibrate --agent cursor               # use Cursor Agent CLI (or: export CLAWDIBRATE_AGENT=cursor)
 python -m clawdibrate --agent codex                # use codex as the calibration agent
 python -m clawdibrate --transcript path/to.jsonl   # calibrate from one transcript
 python -m clawdibrate --dry-run                    # inspect the run without editing AGENTS.md

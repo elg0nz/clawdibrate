@@ -9,7 +9,7 @@ from .instruction_files import (
     ensure_clawdibrate_setup,
 )
 from .compress import run_compress_advisor
-from .orchestrator import calibrate
+from .orchestrator import calibrate, resolve_default_calibration_agent
 from .session_dump import dump_session
 
 
@@ -26,7 +26,7 @@ def main():
     parser.add_argument(
         "--agent",
         default=None,
-        help="CLI agent to use (default: CLAWDIBRATE_AGENT_CMD or claude)",
+        help="CLI agent to use (default: claude; override with CLAWDIBRATE_AGENT or --agent)",
     )
     parser.add_argument(
         "--transcript",
@@ -119,7 +119,7 @@ def main():
     )
 
     args = parser.parse_args()
-    agent_name = args.agent or os.environ.get("CLAWDIBRATE_AGENT", "claude")
+    agent_name = args.agent or resolve_default_calibration_agent()
     if args.setup:
         repo_root = (args.repo or Path.cwd()).resolve()
         result = ensure_clawdibrate_setup(repo_root)
