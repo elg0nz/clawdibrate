@@ -1,8 +1,8 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.6.0** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.7.0** | [Changelog](./docs/CHANGELOG.md)
 >
-> Semver: **MAJOR** = loop contract breaks, **MINOR** = new sections/rules, **PATCH** = wording fixes.
+> Semver: **PATCH** = backward-compatible fixes (wording, tuning). **MINOR** = new backward-compatible functionality (new sections, commands, skills). **MAJOR** = incompatible changes to the calibration loop contract or CLI interface.
 
 ---
 
@@ -20,13 +20,13 @@ You are not a general assistant. You do not answer questions. You tune.
 
 **Install skills first:**
 ```bash
-npx skills add ./src/skills --all -y
+npx skills add ./src/skills --agent claude-code cursor codex --skill '*' -y
 ```
+Only detected agents are targeted — clawdibrate auto-detects installed agent CLIs and config directories.
 
 No API keys required. Calibration shells out to whichever agent CLI is installed.
 
-Built-in agents (`--agent`; default = `claude`, or `CLAWDIBRATE_AGENT` from `.clawdibrate/env`, else `CLAWDIBRATE_*` from `.env`, else shell — see `clawdibrate.env.example`):
-- `cursor` — `cursor agent --print --force` (headless Cursor Agent); use `CURSOR_API_KEY` when not logged in via `cursor agent login`
+Built-in agents (set via `--agent` flag, default = current agent when detectable):
 - `claude` — `claude -p "{prompt}" --dangerously-skip-permissions`
 - `codex` — `codex exec --full-auto "{prompt}"`
 - `opencode` — `opencode --prompt "{prompt}"`
@@ -47,7 +47,6 @@ Runtime: Python 3.10+ for `python -m clawdibrate`. Node.js (see `.tool-versions`
 
 ```bash
 python -m clawdibrate                              # calibrate from recorded transcripts
-python -m clawdibrate --agent cursor               # use Cursor Agent CLI (or: export CLAWDIBRATE_AGENT=cursor)
 python -m clawdibrate --agent codex                # use codex as the calibration agent
 python -m clawdibrate --transcript path/to.jsonl   # calibrate from one transcript
 python -m clawdibrate --dry-run                    # inspect the run without editing AGENTS.md
@@ -59,11 +58,13 @@ python -m clawdibrate --dry-run                    # inspect the run without edi
 
 Slash commands route to `SKILL.md` files in `src/skills/`. All skills use the `clawdbrt:` namespace prefix.
 
-**Registration:** One directory per skill in `src/skills/`, each containing a `SKILL.md` with YAML frontmatter (`name: clawdbrt:<skill-name>`). Run `npx skills add ./src/skills --all -y` to distribute to `skills/` and `.agents/`.
+**Registration:** One directory per skill in `src/skills/`, each containing a `SKILL.md` with YAML frontmatter (`name: clawdbrt:<skill-name>`). Run `npx skills add ./src/skills --agent <detected-agents> --skill '*' -y` to distribute to `skills/` and `.agents/`.
+
+**After `npx skills add`, commit `skills-lock.json` and any updated files in `skills/` and `.agents/` alongside the source skill.**
 
 **Interface:** Every skill must have `name` (with `clawdbrt:` prefix) and `description` in frontmatter. The body is agent instructions.
 
-**Canonical source:** `src/skills/` is source of truth. `skills/` and `.agents/skills/` are install outputs — never edit them directly.
+**Canonical source:** `src/skills/` is source of truth. `skills/` and `.agents/skills/` are install outputs — never edit them directly, but always commit them.
 
 **All new capabilities must be implemented as skills.** The loop, kanban, feature generation, and implementation are all skills — not standalone scripts.
 
@@ -72,8 +73,12 @@ Slash commands route to `SKILL.md` files in `src/skills/`. All skills use the `c
 - `/clawdbrt:kanban` — manages cards in `docs/vX_Y_Z/kanban/` (`src/skills/kanban/SKILL.md`)
 - `/clawdbrt:add-new-features` — proposes and builds new features as MINOR versions (`src/skills/add-new-features/SKILL.md`)
 - `/clawdbrt:implement` — reads kanban board, implements cards by priority with parallel agents (`src/skills/implement/SKILL.md`)
+- `/clawdbrt:scores` — show calibration scoreboard for a repo or all tracked repos (`src/skills/scores/SKILL.md`)
+
+**Section skills:** When a section scores below 0.7 across 3+ runs, or has churn ≥ 3 in git history, create a dedicated skill for it. Name it after the section: `src/skills/<kebab-section-name>/SKILL.md`. The skill body is the expanded, step-by-step version of the rule — more context than fits in the instruction file. Reference it from the section: `See /clawdbrt:<skill-name> for detailed guidance.` This externalizes complexity without bloating the instruction file.
 
 ---
+
 
 ## Bootstrap Transcript Calibrator
 
@@ -90,7 +95,14 @@ section-scoped edits → new AGENTS.md
 
 Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orchestrator.py`
 
+**Boundary:** AGENTS.md is injected as system prompt context — do not re-read it unless editing a specific line via the Edit tool.
+
+**Known Gotchas:**
+- Read large files once fully (no `offset`/`limit`) rather than iteratively chunking — chunking wastes 4x the calls.
+- Either delegate exploration to an Explore agent OR read files directly — never both for the same files.
+
 ---
+
 
 ## Tuning Rules
 
@@ -107,13 +119,14 @@ Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orches
 
 - ✅ Always: use the latest `docs/vX_Y_Z/` directory first for specs, kanban, and references — only fall back to older versions if the file is missing from the current version
 - ✅ Always: inject current AGENTS.md as system prompt when running transcript calibration
-- ✅ Always: save each version as `AGENTS_vN.md` before overwriting
+- ✅ Always: save each version as `.clawdibrate/iterations/AGENTS_vN.md` before overwriting (never in the repo root)
 - ✅ Always: track `reflection_history` across all iterations (episodic memory)
 - ✅ Always: route failures to the specific section responsible, not the whole document
 - ✅ Always: `git commit` immediately after every version update — no uncommitted versions
 - ✅ Always: complete `docs/vX_Y_Z/README.md` before committing a version — no commit without README
-- ✅ Always: create/edit skills in `src/skills/{name}/SKILL.md`, then run `npx skills add ./src/skills --all -y`
+- ✅ Always: create/edit skills in `src/skills/{name}/SKILL.md`, then run `npx skills add ./src/skills --agent <detected-agents> --skill '*' -y`
 - ✅ Always: spawn parallel agents for independent kanban cards — do not work them sequentially
+- ✅ Always: when an agent is spawned to read/explore files, do not also read those same files in the main thread
 - ✅ Always: follow version workflow: SPEC.md → kanban cards → copy icebox from prior version → work cards → README.md → CHANGELOG.md → bump version → commit
 - ✅ Always: `/clawdbrt:loop` calibrates from transcripts. `/clawdbrt:add-new-features` bumps MINOR only. MAJOR requires explicit human decision.
 - ✅ Always: before implementing any capability, check if an installed tool already does it — read its docs first
@@ -129,6 +142,7 @@ Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orches
 
 ---
 
+
 ## Known Gotchas
 
 - **JSON parse failures in judge**: `try/except` → regex `\{.*\}` fallback (`re.DOTALL`)
@@ -137,8 +151,10 @@ Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orches
 - **Subprocess timeout**: agent CLIs can hang — enforce `timeout=120` in `subprocess.run()`
 - **Score plateaus**: if avg_score stalls across multiple transcript runs, capture harder sessions before rewriting more sections
 - **Regression trap**: if a passing task starts failing, check `reflection_history` before rewriting
+- **Claude Code session format**: JSONL at `~/.claude/projects/<mangled-cwd>/` (path `/` → `-`). Each line: `{"type":"user"|"assistant","message":{"content":[…]}}`. Content blocks: `text`, `tool_use` (name+input), `tool_result`. Read 1–2 lines max then write code; do not explore iteratively.
 
 ---
+
 
 ## Score Tracking
 
