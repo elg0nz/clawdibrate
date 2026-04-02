@@ -353,7 +353,14 @@ def run_agent(
     )
     # Capture stdout (contains the JSON result) but stream stderr to terminal for progress
     result = subprocess.run(
-        cmd, shell=True, stdout=subprocess.PIPE, stderr=None, text=True, timeout=timeout, stdin=subprocess.DEVNULL,
+        cmd,
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=None,
+        text=True,
+        timeout=timeout,
+        stdin=subprocess.DEVNULL,
+        env=os.environ,
     )
     if result.returncode != 0:
         raise RuntimeError(f"Agent {agent} exited {result.returncode}")

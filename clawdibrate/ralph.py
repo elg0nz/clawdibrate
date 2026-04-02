@@ -59,6 +59,7 @@ def run_worker(
         text=True,
         timeout=timeout,
         stdin=subprocess.DEVNULL,
+        env=os.environ,
     )
 
     # Clean up prompt file

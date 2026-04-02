@@ -24,7 +24,7 @@
     "clawdbrt:loop": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "bb39656fc94a5b4a1e00155fa034deaad731ec2d743200bdfc510d6561b047d9"
+      "computedHash": "12136186b094df250e9ef7d561567a681ff6e6013eb8683041b0cb8305a187c1"
     },
     "clawdbrt:record-from-git": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",

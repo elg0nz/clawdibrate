@@ -23,7 +23,7 @@ The loop skill now operates on transcript evidence, not synthetic tasks.
 
 1. Ensure the target repo has an `AGENTS.md` or `CLAUDE.md`, and transcripts in `.clawdibrate/transcripts/`, or point to one with `--transcript`
    If no real transcripts exist yet, bootstrap one first with `python -m clawdibrate --repo /abs/path/to/repo --synthesize-git-history`.
-2. Run `python -m clawdibrate` in that repo (defaults to `claude`; for Cursor Agent use `export CLAWDIBRATE_AGENT=cursor` or `--agent cursor`), or use `python -m clawdibrate --repo /abs/path/to/repo`
+2. Run `python -m clawdibrate` in that repo (defaults to `claude`; put `CLAWDIBRATE_AGENT=cursor` in `.clawdibrate/env` or export it — see `clawdibrate.env.example`), or use `python -m clawdibrate --repo /abs/path/to/repo`
 3. For each transcript:
    - Compute deterministic waste metrics
    - Run bug-identifier, then judge, then implementer
@@ -37,7 +37,7 @@ The loop skill now operates on transcript evidence, not synthetic tasks.
 - `python -m clawdibrate --dry-run` — show what would run without editing `AGENTS.md`
 - `python -m clawdibrate --repo /abs/path/to/repo` — target a different repository root
 - `python -m clawdibrate --transcript PATH` — calibrate from one transcript file
-- `export CLAWDIBRATE_AGENT=cursor` then `python -m clawdibrate` — use Cursor Agent CLI (`CURSOR_API_KEY` for headless auth)
+- `.clawdibrate/env` with `CLAWDIBRATE_AGENT=cursor` — Cursor Agent CLI in IDE/non-login shells (`CURSOR_API_KEY` for headless auth)
 
 ## Key Rules
 

@@ -25,7 +25,7 @@ npx skills add ./src/skills --all -y
 
 No API keys required. Calibration shells out to whichever agent CLI is installed.
 
-Built-in agents (`--agent`; default = `claude`, or set `CLAWDIBRATE_AGENT` — e.g. `export CLAWDIBRATE_AGENT=cursor` for Cursor Agent CLI):
+Built-in agents (`--agent`; default = `claude`, or `CLAWDIBRATE_AGENT` from `.clawdibrate/env`, else `CLAWDIBRATE_*` from `.env`, else shell — see `clawdibrate.env.example`):
 - `cursor` — `cursor agent --print --force` (headless Cursor Agent); use `CURSOR_API_KEY` when not logged in via `cursor agent login`
 - `claude` — `claude -p "{prompt}" --dangerously-skip-permissions`
 - `codex` — `codex exec --full-auto "{prompt}"`

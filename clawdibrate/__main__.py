@@ -9,6 +9,7 @@ from .instruction_files import (
     ensure_clawdibrate_setup,
 )
 from .compress import run_compress_advisor
+from .env_bootstrap import load_clawdibrate_env
 from .orchestrator import calibrate, resolve_default_calibration_agent
 from .session_dump import dump_session
 
@@ -26,7 +27,7 @@ def main():
     parser.add_argument(
         "--agent",
         default=None,
-        help="CLI agent to use (default: claude; override with CLAWDIBRATE_AGENT or --agent)",
+        help="CLI agent to use (default: claude; repo .clawdibrate/env or CLAWDIBRATE_AGENT or --agent)",
     )
     parser.add_argument(
         "--transcript",
@@ -119,9 +120,10 @@ def main():
     )
 
     args = parser.parse_args()
+    repo_root = (args.repo or Path.cwd()).resolve()
+    load_clawdibrate_env(repo_root)
     agent_name = args.agent or resolve_default_calibration_agent()
     if args.setup:
-        repo_root = (args.repo or Path.cwd()).resolve()
         result = ensure_clawdibrate_setup(repo_root)
         print(f"Active instruction file: {result['active_path']}")
         if result["created_pointer"]:
@@ -133,7 +135,6 @@ def main():
         return
 
     if args.dump_session:
-        repo_root = (args.repo or Path.cwd()).resolve()
         output = dump_session(
             repo_root=repo_root,
             session_id=args.session_id,
@@ -145,13 +146,11 @@ def main():
 
     if args.compress:
         from .instruction_files import detect_instruction_file
-        repo_root = (args.repo or Path.cwd()).resolve()
         instruction_path = detect_instruction_file(repo_root)
         run_compress_advisor(instruction_path)
         return
 
     if args.synthesize_git_history:
-        repo_root = (args.repo or Path.cwd()).resolve()
         output = synthesize_transcript_from_git(
             repo_root=repo_root,
             files=tuple(args.git_files) if args.git_files else None,

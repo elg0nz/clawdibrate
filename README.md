@@ -21,8 +21,10 @@ python -m clawdibrate --repo ~/Code/other-repo --setup
 # Calibrate from all recorded transcripts in the current repo (default agent: Claude Code CLI)
 python -m clawdibrate
 
-# Use Cursor Agent for calibration instead of Claude Code
-export CLAWDIBRATE_AGENT=cursor
+# Persist agent choice for IDE tasks / non-login shells (loaded before each run)
+mkdir -p .clawdibrate && cp clawdibrate.env.example .clawdibrate/env
+
+# Or one-off in the shell: export CLAWDIBRATE_AGENT=cursor
 
 # Or target a different repo and transcript explicitly
 python -m clawdibrate --repo ~/Code/other-repo --agent codex
@@ -53,13 +55,13 @@ python -m clawdibrate calibrate --dry-run
 
 If your Python scripts directory is on `PATH`, the installed `clawdibrate` console command is equivalent.
 
-Calibration shells out to an agent CLI. **Default is `claude`** (Claude Code). To run the loop with **Cursor Agent** (headless `cursor agent --print`), set:
+Calibration shells out to an agent CLI. **Default is `claude`** (Claude Code).
 
-```bash
-export CLAWDIBRATE_AGENT=cursor
-```
+**Propagating `CLAWDIBRATE_AGENT`:** the CLI loads **`.clawdibrate/env`** from the target repo **before** resolving the default agent; if that file is absent, it reads **`CLAWDIBRATE_*` keys only** from **`.env`**. That covers Cursor tasks and other non-login shells. Copy from [`clawdibrate.env.example`](./clawdibrate.env.example). Existing process environment always wins (values already set are not replaced).
 
-Use `cursor agent login` or `CURSOR_API_KEY` for authentication. You can also pass `--agent cursor` for a one-off run without changing your shell profile.
+For **Cursor Agent** (headless `cursor agent --print`), set `CLAWDIBRATE_AGENT=cursor` in that file or your shell. Use `cursor agent login` or `CURSOR_API_KEY` for authentication. **`--agent cursor`** overrides for a single run.
+
+Subprocess workers inherit the current **`os.environ`** explicitly so nested CLIs see the same variables.
 
 ## Setup Convention
 
