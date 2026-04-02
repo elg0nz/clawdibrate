@@ -44,3 +44,7 @@ venv/
 .vibe/
 .windsurf/
 .zencoder/
+
+# Dolt database files (added by bd init)
+.dolt/
+*.db
