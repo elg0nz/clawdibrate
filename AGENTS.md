@@ -3,6 +3,8 @@
 > **Version: 0.11.0** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **PATCH** = backward-compatible fixes (wording, tuning). **MINOR** = new backward-compatible functionality (new sections, commands, skills). **MAJOR** = incompatible changes to the calibration loop contract or CLI interface.
+>
+> Repo note: Do **not** add the "This repo uses clawdibrate... Install... Run..." onboarding snippet here. That snippet is for target repos being calibrated, not for clawdibrate's own `AGENTS.md`.
 
 ---
 
