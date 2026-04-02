@@ -99,8 +99,8 @@ def main():
     )
     parser.add_argument(
         "--model",
-        default="haiku",
-        help="Model for parallel workers (default: haiku)",
+        default="sonnet",
+        help="Model for parallel workers (default: sonnet)",
     )
     parser.add_argument(
         "--dump-session",
