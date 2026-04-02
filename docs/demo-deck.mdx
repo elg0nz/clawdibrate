@@ -1,0 +1,202 @@
+---
+title: "clawdibrate: Transcript-Based Instruction File Calibration"
+author: Gonzalo Serrano
+date: 2026-04-02
+---
+
+# The problem with AGENTS.md
+
+LLM-generated instruction files make agents **worse**.
+
+- -2% task success, +20% inference cost (arxiv.org/abs/2602.11988, 138 repos, 4 agents)
+- Auto-generated files duplicate README content and add noisy constraints
+- No feedback loop — nobody measures whether the file is actually helping
+
+**The missing piece isn't better generation. It's measurement.**
+
+---
+
+# My framing of "better"
+
+> "Better" means the rewritten instruction file reduces token waste, search waste ratio, correction rate, and repetition score while maintaining or improving task success rate.
+
+**What this excludes:** aesthetics and readability. A terse, ugly file that prevents agent flailing beats a beautiful one that doesn't change behavior.
+
+**The tradeoff is deliberate:** optimize for efficiency while holding success constant. Not just "did it work" but "did it work without flailing."
+
+---
+
+# Research → Design, not the other way around
+
+Started with a Perplexity deep-dive to survey the landscape. Each paper read in full, specific findings mapped to design decisions.
+
+| Paper | Key Finding | What It Became |
+|---|---|---|
+| **AgentBench** (Liu et al., 2023) | TLE is dominant failure (24.9%–36.9%). All 8 envs use deterministic eval. | Deterministic-first scoring. Repetition detection via Rouge-L. |
+| **Reflexion** (Shinn, NeurIPS 2023) | Verbal critiques >> scalar rewards (+22pp AlfWorld) | Bug-identifier outputs critiques, not scores |
+| **RISE** (Qu et al., 2024) | Self-correction as multi-turn MDP (+23.9%) | Each iteration builds on the last, not restarts |
+| **RLMs** (Zhang et al., Dec 2025) | Recursive decomposition of long inputs | Failures route to specific sections, not the full file |
+| **Evaluating AGENTS.md** (2026) | LLM-generated files hurt; bloat = cost | Token efficiency is highest-weighted metric (0.40) |
+
+Also explored: DSPy MIPROv2, OPRO, TextGrad — informed the design space but not primary.
+
+---
+
+# Five deterministic metrics
+
+Three design constraints: **measurable, deterministic, generalizable.**
+
+| Metric | What It Measures |
+|---|---|
+| **token_efficiency** | Token waste AGENTS.md failed to prevent |
+| **search_waste_ratio** | Searches for info already in the file |
+| **correction_rate** | How often the user had to redirect |
+| **repetition_score** | Repeated tool calls (Rouge-L >= 0.8) |
+| **success_rate** | Binary: did the agent complete the task? |
+
+```
+score = 0.40 × token_efficiency
+      + 0.25 × (1 - search_waste_ratio)
+      + 0.15 × (1 - correction_rate)
+      + 0.10 × (1 - repetition_score)
+      + 0.10 × success_rate
+```
+
+---
+
+# The pipeline
+
+```
+transcript → deterministic metrics → bug-identifier → judge → implementer → updated AGENTS.md
+```
+
+1. **Read** real agent session transcripts
+2. **Compute** deterministic metrics (milliseconds, no LLM)
+3. **Identify** failures — map each to a specific AGENTS.md section
+4. **Judge** fixability — LLM only for what deterministic metrics can't capture
+5. **Implement** section-scoped edits — targeted, not full-document rewrites
+
+Three loop modes: `--mode fast` (single pass), `--mode progressive` (cancel-safe iterations), `--mode max --target-score 0.9` (run until plateau).
+
+---
+
+# Target repo: sqlite-utils (simonw)
+
+A feature-rich Python CLI with complex subcommand patterns, plugin architecture via pluggy, and non-discoverable conventions.
+
+**Why this repo:** FTS shadow tables, SQLite ALTER TABLE workarounds, Click decorator chains, 146-function monolith `db.py` — all things an agent won't infer without explicit guidance.
+
+---
+
+# Before / After
+
+**Same task, same model:** "Create a database with essays from Paul Graham and Sam Altman, enable fulltext search."
+
+![Before/After comparison](before-after-sqlite-utils.png)
+
+| | With AGENTS.md | Without AGENTS.md |
+|---|---|---|
+| **Tool calls** | 11 | 16+ |
+| **User corrections** | 0 | 1 (ignored) |
+| **Correct interface** | `sqlite-utils` CLI | `python -m sqlite_utils` |
+| **Time** | ~30s | 3m 32s |
+| **Convention adherence** | CLI from the start | Mixed Python/CLI, even after correction |
+
+The agent without AGENTS.md defaulted to the Python library, got corrected, and **still used the Python library**. A boundary violation — exactly the failure mode clawdibrate detects.
+
+---
+
+# What didn't work
+
+**Token-reduction oscillation.** Built a mechanism to compress the instruction file itself. The rewriter shortened instructions → next pass judged them too terse → expanded them → repeat. Classic optimization instability.
+
+**The fix:** single-pass, best-effort. Dampening by removing the loop entirely.
+
+**Pipeline latency.** Deterministic metrics compute in milliseconds. The LLM judge step is the bottleneck. Measurement is fast; reasoning is slow. Haven't solved this — tradeoff between judgment quality and iteration speed.
+
+---
+
+# The biggest flaw in my evaluation
+
+The metrics capture **surface patterns** but not **intent sequences**.
+
+An agent that runs 5 searches might be lost (waste) or methodically narrowing (good practice). The current tier can't distinguish them.
+
+**The gap:** counting tool calls vs. understanding tool call *strategies*. This is why Tier 2 (LLM judge) exists — but it's a blunt instrument for a nuanced problem.
+
+**With more time:** trajectory-level analysis of session data. Understanding what the agent was *trying to do* across multi-step spans, not just what it did.
+
+---
+
+# What's next
+
+1. **Deeper session pattern matching** — intent sequence analysis, not just event counting. Front-load this work.
+2. **Multi-platform validation** — current parsing tested on Claude Code only. Architecture supports pluggable parsers for Codex, Cursor, OpenCode. Ship and test them.
+3. **The convergence question** — does running clawdibrate N times on the same transcript converge or oscillate? Need systematic stability testing.
+
+---
+
+# The generated AGENTS.md
+
+```markdown
+# sqlite-utils AGENTS.md
+
+> **Version: 0.1.0**
+
+## Identity
+
+You are a contributor to sqlite-utils, a Python CLI utility and library
+for manipulating SQLite databases. The project is maintained by Simon Willison
+and has 47 test files with 11k+ lines of tests. The codebase uses Click for CLI,
+has a plugin system via pluggy, and supports full-text search, GIS,
+and table transformations.
+
+## Architecture
+
+- `sqlite_utils/db.py` — core Database/Table classes (~146 functions).
+  All SQL operations live here.
+- `sqlite_utils/cli.py` — Click CLI commands (~80 commands).
+  Thin layer that delegates to `db.py`.
+- `sqlite_utils/utils.py` — shared helpers.
+- `sqlite_utils/plugins.py` — pluggy hook system.
+- `sqlite_utils/recipes.py` — built-in transformation recipes.
+- `tests/` — 47 test files, pytest-based. `conftest.py` has shared fixtures.
+
+## Known Gotchas
+
+- Large db.py: 146 functions in one file. Read the whole file before editing.
+- Click decorators: stacked @click.option decorators. Changing one can break
+  the chain.
+- SQLite ALTER TABLE limits: Many operations use "create new table, copy data,
+  drop old" pattern in transform().
+- FTS: Full-text search uses sqlite_fts4 with BM25 ranking. FTS tables have
+  shadow tables — don't drop them directly.
+- Type coercion: suggest_column_types() infers types from data samples.
+  It can be wrong on mixed-type columns.
+- Plugin hooks: Uses pluggy's hookspecs.py. New hooks need both the spec
+  and the implementation.
+
+## Boundaries
+
+- Run `pytest tests/` before committing any changes.
+- Don't modify test fixtures in conftest.py without checking all 47 test files.
+- The CLI is the public API — breaking changes need deprecation paths.
+- db.py classes (Database, Table, View) are also public API — method signatures
+  are stable.
+
+## Commands
+
+pytest tests/                       # full test suite
+pytest tests/test_cli.py -x         # CLI tests (largest file)
+pytest tests/test_create.py -x      # table creation tests
+pytest tests/test_transform.py -x   # schema transformation tests
+sqlite-utils --help                 # CLI reference
+```
+
+---
+
+# One thing I don't know
+
+Does the two-tier scoring system (deterministic + LLM judge) produce stable rankings across different LLM judge models? I've tested with Claude — the deterministic tier is model-agnostic by design, but Tier 2's qualitative judgments might shift with a different judge. I don't have data on this yet.
+
+I'd like to find out.
