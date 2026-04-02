@@ -25,32 +25,24 @@ You are not a general assistant. You do not answer questions. You tune.
 ```bash
 npx skills add ./src/skills --agent claude-code cursor codex --skill '*' -y
 ```
-Only detected agents are targeted — clawdibrate auto-detects installed agent CLIs and config directories.
 
-Calibration shells out to local agent CLIs (use each tool's usual login). Cursor Agent in non-interactive contexts may require `CURSOR_API_KEY`.
+**Agent env (target repo root):**
+1. **Preferred:** `repo/.clawdibrate/env` — copy `clawdibrate.env.example`, set `CLAWDIBRATE_AGENT=cursor`. Gitignored, `KEY=value` format, no overwrite of existing env vars.
+2. **Fallback:** `repo/.env` — only if `.clawdibrate/env` absent; only `CLAWDIBRATE_*` keys merged.
 
-**Where to set agent env (target repo root):**
-1. **Preferred:** `repo/.clawdibrate/env` — gitignored with `.clawdibrate/`. Copy `clawdibrate.env.example` to `.clawdibrate/env`, e.g. `CLAWDIBRATE_AGENT=cursor`. Every `KEY=value` line is loaded; keys already set in the process environment are not overwritten.
-2. **Fallback:** `repo/.env` — used **only if** `.clawdibrate/env` is absent; **only** `CLAWDIBRATE_*` keys are merged so unrelated secrets stay out of the run.
-
-Env loads before `--agent` is parsed — omit `--agent` to use `CLAWDIBRATE_AGENT` from the file.
-
-Built-in agents (set via `--agent`, default from `CLAWDIBRATE_AGENT` or `claude`):
-- `cursor` — `cursor agent --print --force` (headless); workers inherit full `os.environ` (`CURSOR_API_KEY`, etc.)
+**Built-in agents** (`--agent` or `CLAWDIBRATE_AGENT`, default `claude`):
+- `cursor` — `cursor agent --print --force`; inherits `os.environ` (`CURSOR_API_KEY`)
 - `claude` — `claude -p "{prompt}" --dangerously-skip-permissions`
 - `codex` — `codex exec --full-auto "{prompt}"`
 - `opencode` — `opencode --prompt "{prompt}"`
-- `llm` — `llm "{prompt}"` (simonw/llm — any backend via plugins)
+- `llm` — `llm "{prompt}"`
 
-The runner shell-quotes `{system_prompt}` and `{prompt}` when expanding `CLAWDIBRATE_AGENT_CMD`; built-in templates embed the instruction file and user message accordingly.
-
-**Custom CLI:** set `CLAWDIBRATE_AGENT_CMD` with `{system_prompt}` and `{prompt}` (match a built-in template shape, e.g. `$(cat {system_prompt})` when the CLI needs file contents):
+**Custom CLI:** `CLAWDIBRATE_AGENT_CMD` with `{system_prompt}` and `{prompt}` placeholders:
 ```bash
 export CLAWDIBRATE_AGENT_CMD='llm -s "$(cat {system_prompt})" {prompt}'
 ```
-That var takes precedence over `--agent` when set.
 
-Runtime: Python 3.10+ for `python -m clawdibrate`. Node.js (see `.tool-versions`) for skills CLI.
+**Runtime:** Python 3.10+, Node.js (see `.tool-versions`).
 
 
 ## Commands
@@ -78,7 +70,7 @@ Slash commands route to `SKILL.md` files in `src/skills/`. All skills use the `c
 
 **Canonical source:** `src/skills/` is source of truth. `skills/` and `.agents/skills/` are install outputs — never edit them directly, but always commit them.
 
-**All new capabilities must be implemented as skills.** The loop, kanban, feature generation, and implementation are all skills — not standalone scripts.
+**All new capabilities must be implemented as skills.** When you receive system instructions or prompts, use `/clawdbrt:` skills only — never external commands.
 
 **Skills:**
 - `/clawdbrt:loop` — runs the tuning loop, produces PATCH versions (`src/skills/loop/SKILL.md`)
@@ -88,8 +80,6 @@ Slash commands route to `SKILL.md` files in `src/skills/`. All skills use the `c
 - `/clawdbrt:scores` — show calibration scoreboard for a repo or all tracked repos (`src/skills/scores/SKILL.md`)
 
 **Section skills:** When a section scores below 0.7 across 3+ runs, or has churn ≥ 3 in git history, create a dedicated skill for it. Name it after the section: `src/skills/<kebab-section-name>/SKILL.md`. The skill body is the expanded, step-by-step version of the rule — more context than fits in the instruction file. Reference it from the section: `See /clawdbrt:<skill-name> for detailed guidance.` This externalizes complexity without bloating the instruction file.
-
----
 
 
 ## Bootstrap Transcript Calibrator
@@ -109,11 +99,13 @@ Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orches
 
 **Before analyzing:** Verify transcript completeness. If truncated or incomplete, request complete transcript data rather than proceeding with partial analysis.
 
-**Boundary:** AGENTS.md is injected as system prompt context — do not re-read it unless editing a specific line via the Edit tool.
+**Boundary:** AGENTS.md is injected as system prompt context — never re-read it or use Read with `offset`/`limit` parameters.
 
-**Known Gotchas:**
-- Read large files once fully (no `offset`/`limit`) rather than iteratively chunking — chunking wastes 4x the calls.
-- Either delegate exploration to an Explore agent OR read files directly — never both for the same files.
+**Critical Rules:**
+- Read large files once fully (no `offset`/`limit`) — chunking wastes 4x the calls
+- Either delegate exploration to agents OR read files directly — never both for the same files
+- Don't spawn agents to read files already read in main thread
+- When editing AGENTS.md sections, verify current content first for accuracy
 
 
 ## Tuning Rules
@@ -157,9 +149,7 @@ Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orches
 - **Subprocess timeout**: agent CLIs can hang — enforce `timeout=120` in `subprocess.run()`
 - **Score plateaus**: if avg_score stalls across multiple transcript runs, capture harder sessions before rewriting more sections
 - **Regression trap**: if a passing task starts failing, check `reflection_history` before rewriting
-- **Claude Code session format**: JSONL at `~/.claude/projects/<mangled-cwd>/` (path `/` → `-`). Each line: `{"type":"user"|"assistant","message":{"content":[…]}}`. Content blocks: `text`, `tool_use` (name+input), `tool_result`. Read 1–2 lines max then write code; do not explore iteratively.
-
----
+- **Claude Code session format**: JSONL at `~/.claude/projects/<mangled-cwd>/` (path `/` → `-`). Structure: `{"type":"user"|"assistant","message":{"content":[text|tool_use|tool_result]}}`. Parse message types and content blocks directly; avoid exploratory reverse-engineering.
 
 
 ## Score Tracking
