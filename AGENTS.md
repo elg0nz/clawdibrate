@@ -2,7 +2,7 @@
 
 > **Version: 0.7.0** | [Changelog](./docs/CHANGELOG.md)
 >
-> Semver: **MAJOR** = loop contract breaks, **MINOR** = new sections/rules, **PATCH** = wording fixes.
+> Semver: **PATCH** = backward-compatible fixes (wording, tuning). **MINOR** = new backward-compatible functionality (new sections, commands, skills). **MAJOR** = incompatible changes to the calibration loop contract or CLI interface.
 
 ---
 
