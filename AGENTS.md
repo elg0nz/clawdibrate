@@ -1,6 +1,6 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.9.3** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.9.4** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **PATCH** = backward-compatible fixes (wording, tuning). **MINOR** = new backward-compatible functionality (new sections, commands, skills). **MAJOR** = incompatible changes to the calibration loop contract or CLI interface.
 
@@ -13,28 +13,24 @@ See `/clawdbrt:identity` for detailed guidance.
 
 ## Setup
 
-**Install skills first:**
 ```bash
 npx skills add ./src/skills --agent claude-code cursor codex --skill '*' -y
 ```
 
-**Agent env (target repo root):**
-1. **Preferred:** `repo/.clawdibrate/env` — copy `clawdibrate.env.example`, set `CLAWDIBRATE_AGENT=cursor`. Gitignored, `KEY=value` format, no overwrite of existing env vars.
-2. **Fallback:** `repo/.env` — only if `.clawdibrate/env` absent; only `CLAWDIBRATE_*` keys merged.
+**Agent env:**
+1. `repo/.clawdibrate/env` — copy `clawdibrate.env.example`, set `CLAWDIBRATE_AGENT=cursor`
+2. Fallback: `repo/.env` (only `CLAWDIBRATE_*` keys)
 
-**Built-in agents** (`--agent` or `CLAWDIBRATE_AGENT`, default `claude`):
-- `cursor` — `cursor agent --print --force`; inherits `os.environ` (`CURSOR_API_KEY`)
+**Built-in agents** (`--agent`/`CLAWDIBRATE_AGENT`, default `claude`):
+- `cursor` — `cursor agent --print --force`
 - `claude` — `claude -p "{prompt}" --dangerously-skip-permissions`
 - `codex` — `codex exec --full-auto "{prompt}"`
 - `opencode` — `opencode --prompt "{prompt}"`
 - `llm` — `llm "{prompt}"`
 
-**Custom CLI:** `CLAWDIBRATE_AGENT_CMD` with `{system_prompt}` and `{prompt}` placeholders:
-```bash
-export CLAWDIBRATE_AGENT_CMD='llm -s "$(cat {system_prompt})" {prompt}'
-```
+**Custom:** `CLAWDIBRATE_AGENT_CMD='llm -s "$(cat {system_prompt})" {prompt}'`
 
-**Runtime:** Python 3.10+, Node.js (see `.tool-versions`).
+**Runtime:** Python 3.10+, Node.js
 
 
 ## Commands
@@ -90,13 +86,13 @@ Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orches
 
 **Before analyzing:** Verify transcript completeness. If truncated or incomplete, request complete transcript data rather than proceeding with partial analysis.
 
-**Boundary:** AGENTS.md is injected as system prompt context — never re-read it or use Read with `offset`/`limit` parameters.
+**Boundary:** AGENTS.md is injected as system prompt context — NEVER use Read with offset/limit parameters on AGENTS.md.
 
 **Critical Rules:**
 - Auto-detect high-churn sections (≥3 edits) and flag them for review before making changes
-- Read large files once fully (no `offset`/`limit`) — chunking wastes 4x the calls
+- Read large files once fully (no `offset`/`limit`) — chunking wastes 4x the calls and tokens
+- For reading multiple related files (>3), use a single agent with batch instructions or parallel tool calls in one message
 - Either delegate exploration to agents OR read files directly — never both for the same files
-- Don't spawn agents to read files already read in main thread
 - When editing AGENTS.md sections, verify current content first for accuracy
 
 
