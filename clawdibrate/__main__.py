@@ -9,6 +9,7 @@ from .instruction_files import (
     ensure_clawdibrate_setup,
 )
 from .orchestrator import calibrate
+from .session_dump import dump_session
 
 
 def main():
@@ -65,6 +66,16 @@ def main():
         default=None,
         help="Tracked instruction files to mine from git history",
     )
+    parser.add_argument(
+        "--dump-session",
+        action="store_true",
+        help="Convert the most recent Claude Code session into a clawdibrate transcript",
+    )
+    parser.add_argument(
+        "--session-id",
+        default=None,
+        help="Specific Claude Code session UUID to dump (default: most recent)",
+    )
 
     args = parser.parse_args()
     agent_name = args.agent or os.environ.get("CLAWDIBRATE_AGENT", "claude")
@@ -78,6 +89,16 @@ def main():
             print("Skills installed: record-start, record-stop, record-from-git, loop")
         if result.get("permissions_configured"):
             print("Permissions configured: .claude/settings.json")
+        return
+
+    if args.dump_session:
+        repo_root = (args.repo or Path.cwd()).resolve()
+        output = dump_session(
+            repo_root=repo_root,
+            session_id=args.session_id,
+            output_path=args.transcript,
+        )
+        print(output)
         return
 
     if args.synthesize_git_history:
