@@ -4,6 +4,10 @@ Replace the synthetic-task loop with transcript-based calibration. Delete the le
 
 Core insight: the real signal is in agent conversation transcripts, not synthetic tasks. When an agent searches for something AGENTS.md should have told it, that's a measurable AGENTS.md failure — and a measurable token waste. Token reduction is the primary optimization target (aligned with AgentBench's finding that Task Limit Exceeded is the dominant failure mode).
 
+## Research
+
+See [research-foundations.md](research-foundations.md) — traces each metric and design decision back to the source papers (AgentBench, Reflexion, RISE, RLMs, Evaluating AGENTS.md). Also documents what was deliberately left out and why.
+
 ## Cards
 
 | # | Title | Priority | Depends |
