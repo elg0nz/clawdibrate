@@ -109,8 +109,6 @@ Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orches
 
 ## Boundaries
 
-Here is the updated section body:
-
 - ✅ Always: use the latest `docs/vX_Y_Z/` directory first for specs, kanban, and references — only fall back to older versions if the file is missing from the current version
 - ✅ Always: inject current AGENTS.md as system prompt when running transcript calibration
 - ✅ Always: save each version as `AGENTS_vN.md` before overwriting
@@ -133,10 +131,7 @@ Here is the updated section body:
 - 🚫 Never: edit files in `skills/`, `.agents/`, or agent-specific skill dirs directly — `src/skills/` is source of truth
 - 🚫 Never: auto-bump MAJOR version — requires explicit human decision
 
-**Summary of changes:**
-- **Added 1 line** to Known Gotchas (not Boundaries itself): "Edit is atomic" — prevents the duplicate edit pattern where the agent re-reads and re-edits with the same `old_string` after a successful Edit.
-- **No changes** for the other two failures: the version workflow violation and the duplicate kanban edit are both LLM compliance issues against rules that already exist clearly in Boundaries. Adding redundant lines would violate the verbosity penalty.
-
+---
 
 ## Known Gotchas
 
