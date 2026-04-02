@@ -34,14 +34,20 @@ The loop skill now operates on transcript evidence, not synthetic tasks.
 ## Modes
 
 - `/clawdbrt:loop` — calibrate from recorded transcripts
+- `python -m clawdibrate --mode fast` — low-hanging-fruit defaults (small transcript cap, no auto section-skill extraction)
+- `python -m clawdibrate --mode progressive` — many small, cancel-safe iterations over transcripts
+- `python -m clawdibrate --mode max --target-score 0.9` — keep iterating until optimized/plateau with remaining-iteration estimate
 - `python -m clawdibrate --dry-run` — show what would run without editing `AGENTS.md`
 - `python -m clawdibrate --repo /abs/path/to/repo` — target a different repository root
 - `python -m clawdibrate --transcript PATH` — calibrate from one transcript file
 - `.clawdibrate/env` with `CLAWDIBRATE_AGENT=cursor` — Cursor Agent CLI in IDE/non-login shells (`CURSOR_API_KEY` for headless auth)
+
+Instrumentation is written to `.clawdibrate/history/instrumentation.jsonl` with per-stage timings, transcript counts, token deltas, and optimization estimates.
 
 ## Key Rules
 
 - Never rewrite converged sections (≥ 0.95 across 3+ runs)
 - Prefer deterministic metrics before model judgment
 - Track reflections and baselines in `.clawdibrate/history/`
+- When AGENTS.md changes, the loop snapshots prior content to `.clawdibrate/iterations/AGENTS_vN.md` and bumps PATCH version in the header.
 - When section-skill suggestions print, the loop **applies** them by default: writes `src/skills/<slug>/SKILL.md`, replaces the section with a `/clawdbrt:` pointer, runs `npx skills add ./src/skills --all -y`, and commits. Use `python -m clawdibrate --no-auto-section-skills` to only print suggestions.

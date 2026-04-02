@@ -17,6 +17,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -480,6 +481,54 @@ def read_instruction_file(instruction_path: Path) -> str:
     return instruction_path.read_text()
 
 
+_VERSION_RE = re.compile(r"(\*\*Version:\s*)(\d+)\.(\d+)\.(\d+)(\*\*)")
+
+
+def parse_instruction_version(content: str) -> tuple[int, int, int] | None:
+    """Return (major, minor, patch) from header version marker, if present."""
+    m = _VERSION_RE.search(content)
+    if not m:
+        return None
+    return int(m.group(2)), int(m.group(3)), int(m.group(4))
+
+
+def bump_patch_version(content: str) -> tuple[str, tuple[int, int, int] | None]:
+    """Bump PATCH in '**Version: X.Y.Z**' header marker."""
+    m = _VERSION_RE.search(content)
+    if not m:
+        return content, None
+    major = int(m.group(2))
+    minor = int(m.group(3))
+    patch = int(m.group(4)) + 1
+    start, end = m.span()
+    replaced = f"{m.group(1)}{major}.{minor}.{patch}{m.group(5)}"
+    return content[:start] + replaced + content[end:], (major, minor, patch)
+
+
+def snapshot_iteration_file(
+    repo_root: Path,
+    instruction_path: Path,
+    old_content: str,
+    old_version: tuple[int, int, int] | None,
+) -> Path | None:
+    """Save pre-overwrite snapshot to .clawdibrate/iterations/AGENTS_vN.md."""
+    rel_name = instruction_path.name
+    if rel_name != "AGENTS.md":
+        return None
+    iterations_dir = repo_root / ".clawdibrate" / "iterations"
+    iterations_dir.mkdir(parents=True, exist_ok=True)
+    if old_version is not None:
+        file_name = f"AGENTS_v{old_version[0]}_{old_version[1]}_{old_version[2]}.md"
+    else:
+        # Fallback for malformed/no version: monotonic timestamp suffix
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        file_name = f"AGENTS_vunknown_{ts}.md"
+    out = iterations_dir / file_name
+    if not out.exists():
+        out.write_text(old_content, encoding="utf-8")
+    return out
+
+
 def extract_section(content: str, section_name: str) -> str:
     pattern = rf"## {re.escape(section_name)}\s*\n(.*?)(?=\n## |\Z)"
     match = re.search(pattern, content, re.DOTALL)
@@ -571,6 +620,89 @@ def save_score(history_dir: Path, entry: dict, repo_root: Path | None = None):
         board_path = _central_scoreboard_path(repo_root)
         with open(board_path, "a") as f:
             f.write(json.dumps({"repo": str(repo_root.resolve()), **entry}) + "\n")
+
+
+def save_instrumentation(history_dir: Path, entry: dict):
+    """Append developer-facing run instrumentation metrics."""
+    history_dir.mkdir(parents=True, exist_ok=True)
+    with open(history_dir / "instrumentation.jsonl", "a") as f:
+        f.write(json.dumps(entry) + "\n")
+
+
+def estimate_iterations_to_target(
+    history_dir: Path,
+    target_score: float = 0.9,
+    lookback: int = 8,
+) -> dict:
+    """Estimate remaining calibration iterations from recent score trend."""
+    path = history_dir / "scores.jsonl"
+    if not path.exists():
+        return {
+            "target_score": target_score,
+            "current_avg": 0.0,
+            "iterations_remaining": None,
+            "slope_per_run": 0.0,
+            "confidence": "low",
+            "reason": "no history",
+        }
+
+    rows = []
+    for line in path.read_text().splitlines():
+        if not line.strip():
+            continue
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    avgs = [float(r.get("avg", 0.0)) for r in rows if isinstance(r.get("avg"), (int, float))]
+    if not avgs:
+        return {
+            "target_score": target_score,
+            "current_avg": 0.0,
+            "iterations_remaining": None,
+            "slope_per_run": 0.0,
+            "confidence": "low",
+            "reason": "no average scores",
+        }
+
+    window = avgs[-lookback:]
+    current = window[-1]
+    if len(window) < 2:
+        return {
+            "target_score": target_score,
+            "current_avg": round(current, 3),
+            "iterations_remaining": None,
+            "slope_per_run": 0.0,
+            "confidence": "low",
+            "reason": "insufficient history",
+        }
+
+    slope = (window[-1] - window[0]) / (len(window) - 1)
+    if current >= target_score:
+        remaining = 0
+        reason = "target reached"
+    elif slope <= 0:
+        remaining = None
+        reason = "non-improving trend"
+    else:
+        remaining = int(math.ceil((target_score - current) / slope))
+        remaining = max(1, min(remaining, 200))
+        reason = "trend projection"
+
+    confidence = "low"
+    if len(window) >= 6 and slope > 0:
+        confidence = "high"
+    elif len(window) >= 4 and slope > 0:
+        confidence = "medium"
+
+    return {
+        "target_score": target_score,
+        "current_avg": round(current, 3),
+        "iterations_remaining": remaining,
+        "slope_per_run": round(slope, 4),
+        "confidence": confidence,
+        "reason": reason,
+    }
 
 
 def load_baselines(history_dir: Path) -> dict:
@@ -810,8 +942,58 @@ def calibrate(
     workers: int = 4,
     model: str = "haiku",
     auto_section_skills: bool = True,
+    run_mode: str = "standard",
+    run_iteration: int | None = None,
+    target_score: float = 0.9,
 ):
     """Run one calibration pass: identify → judge → implement → persist."""
+    started_at = datetime.now(timezone.utc)
+    perf_start = time.perf_counter()
+    stage_times: dict[str, float] = {}
+    instrumentation = {
+        "timestamp": started_at.isoformat(),
+        "mode": run_mode,
+        "iteration": run_iteration,
+        "agent": agent,
+        "model": model,
+        "workers": workers,
+        "dry_run": dry_run,
+        "auto_section_skills": auto_section_skills,
+    }
+
+    def _summary(
+        *,
+        changed: bool,
+        failures: int,
+        avg_score: float,
+        section_scores_agg: dict[str, float] | None = None,
+        reason: str = "completed",
+    ) -> dict:
+        estimate = estimate_iterations_to_target(history_dir, target_score=target_score)
+        optimized = bool(
+            avg_score >= target_score
+            and (
+                not section_scores_agg
+                or all(v >= target_score for v in section_scores_agg.values())
+            )
+        )
+        total_ms = int((time.perf_counter() - perf_start) * 1000)
+        return {
+            "timestamp": started_at.isoformat(),
+            "mode": run_mode,
+            "iteration": run_iteration,
+            "reason": reason,
+            "changed": changed,
+            "failures": failures,
+            "avg_score": round(avg_score, 3),
+            "section_scores": section_scores_agg or {},
+            "optimized": optimized,
+            "target_score": target_score,
+            "estimate": estimate,
+            "stage_times_ms": {k: int(v * 1000) for k, v in stage_times.items()},
+            "elapsed_ms": total_ms,
+        }
+
     repo_root = resolve_repo_root(repo_root)
     paths = repo_paths(repo_root)
     instruction_path = paths["instruction_file"]
@@ -837,6 +1019,7 @@ def calibrate(
     reflections = load_reflections(history_dir)
 
     # Discover transcripts
+    discover_start = time.perf_counter()
     if transcript_path:
         transcript = transcript_path if transcript_path.is_absolute() else (repo_root / transcript_path)
         transcripts = [transcript.resolve()]
@@ -848,13 +1031,24 @@ def calibrate(
             f"No transcripts found in {transcripts_dir}. Run /clawdbrt:record-start before working, then /clawdbrt:record-stop.",
             file=sys.stderr,
         )
-        return
+        summary = _summary(changed=False, failures=0, avg_score=0.0, reason="no_transcripts")
+        instrumentation.update({"result": summary})
+        save_instrumentation(history_dir, instrumentation)
+        return summary
 
     # Card 003: hold-out transcript split
     if max_transcripts and len(transcripts) > max_transcripts:
         transcripts = transcripts[-max_transcripts:]
         print(f"\nCapped to {max_transcripts} most recent transcripts")
     train_transcripts, test_transcripts = split_transcripts(transcripts, holdout_ratio)
+    stage_times["discover_transcripts"] = time.perf_counter() - discover_start
+    instrumentation.update(
+        {
+            "transcripts_total": len(transcripts),
+            "train_transcripts": len(train_transcripts),
+            "test_transcripts": len(test_transcripts),
+        }
+    )
     if test_transcripts:
         print(f"\nHold-out split: {len(train_transcripts)} train, {len(test_transcripts)} test")
     else:
@@ -866,6 +1060,7 @@ def calibrate(
     all_deltas: list[dict] = []
 
     # Pre-compute metrics and baselines for all transcripts
+    metrics_start = time.perf_counter()
     transcript_data: list[dict] = []
     for t_path in train_transcripts:
         print(f"\n→ Processing transcript: {t_path.name}")
@@ -901,13 +1096,19 @@ def calibrate(
             "delta": delta,
             "recency_weight": recency_weight,
         })
+    stage_times["metrics_and_baselines"] = time.perf_counter() - metrics_start
 
     if dry_run:
         for td in transcript_data:
             print(f"  [dry-run] would invoke bug-identifier on {td['t_path'].name}")
+        summary = _summary(changed=False, failures=0, avg_score=0.0, reason="dry_run")
+        instrumentation.update({"result": summary})
+        save_instrumentation(history_dir, instrumentation)
+        return summary
 
     # Stage 1: Bug identification (parallel when workers > 1)
     if not dry_run:
+        stage1_start = time.perf_counter()
         bug_id_tasks = []
         for i, td in enumerate(transcript_data):
             t_path = td["t_path"]
@@ -935,6 +1136,8 @@ def calibrate(
                     agent, PROMPTS_DIR / "bug-identifier.md", task["prompt"], model=model
                 )
                 bug_results.append({"id": task["id"], "result": raw, "error": None})
+        stage_times["stage_1_bug_identifier"] = time.perf_counter() - stage1_start
+        instrumentation["stage_1_tasks"] = len(bug_id_tasks)
 
         # Collect failures from bug-identification results
         all_pending_failures: list[tuple[dict, dict]] = []  # (failure, transcript_data)
@@ -957,6 +1160,7 @@ def calibrate(
                 all_pending_failures.append((failure, td))
 
         # Stage 2: Judge each failure (parallel when workers > 1)
+        stage2_start = time.perf_counter()
         judge_tasks = []
         for i, (failure, td) in enumerate(all_pending_failures):
             section = failure["responsible_section"]
@@ -981,6 +1185,8 @@ def calibrate(
             for task in judge_tasks:
                 raw = run_agent(agent, PROMPTS_DIR / "judge.md", task["prompt"], model=model)
                 judge_results.append({"id": task["id"], "result": raw, "error": None})
+        stage_times["stage_2_judge"] = time.perf_counter() - stage2_start
+        instrumentation["stage_2_tasks"] = len(judge_tasks)
 
         for jr in judge_results:
             failure, td = all_pending_failures[jr["id"]]
@@ -997,12 +1203,12 @@ def calibrate(
             weight = verdict.get("weight", 0.0) * td["recency_weight"]
             section_scores.setdefault(section, []).append(weight)
 
-    if dry_run:
-        return
-
     if not all_failures:
         print("\nNo actionable failures found.")
-        return
+        summary = _summary(changed=False, failures=0, avg_score=0.0, reason="no_actionable_failures")
+        instrumentation.update({"result": summary})
+        save_instrumentation(history_dir, instrumentation)
+        return summary
 
     # Stage 3: Implement fixes per section
     sections_to_fix = {}
@@ -1059,6 +1265,7 @@ def calibrate(
         impl_section_order.append((section, avg_weight))
 
     # Run implementer tasks (parallel for independent sections when workers > 1)
+    stage3_start = time.perf_counter()
     if impl_tasks:
         if workers > 1 and len(impl_tasks) > 1:
             print(f"\n  [stage 3/3] running {len(impl_tasks)} implementer calls in parallel (workers={workers})…")
@@ -1137,8 +1344,11 @@ def calibrate(
 
             updated_agents_md = candidate
             print(f"  ✏ {section}: updated")
+    stage_times["stage_3_implementer"] = time.perf_counter() - stage3_start
+    instrumentation["stage_3_tasks"] = len(impl_tasks)
 
     # Compression pass: if the file grew past the pre-run baseline, shrink largest sections first
+    compression_start = time.perf_counter()
     post_impl_tokens = count_tokens(updated_agents_md)
     if post_impl_tokens > tokens_start and updated_agents_md != agents_md:
         from .compress import compress_section
@@ -1161,6 +1371,7 @@ def calibrate(
                 print(f"    compressed [{sec_name}]: -{saved} tokens")
         final_tokens = count_tokens(updated_agents_md)
         print(f"  [compression] tokens after: {final_tokens:,} (baseline was {tokens_start:,})")
+    stage_times["compression"] = time.perf_counter() - compression_start
 
     # Card 003: score test set after changes (without modifying AGENTS.md)
     test_scores: dict[str, list[float]] = {}
@@ -1199,21 +1410,45 @@ def calibrate(
         test_avg = 0.0
 
     # Persist — write and commit via git (no _vN.md copies)
+    persist_start = time.perf_counter()
+    commit_success = False
+    bumped_to: tuple[int, int, int] | None = None
+    iteration_snapshot: Path | None = None
     if updated_agents_md != agents_md:
+        prior_version = parse_instruction_version(agents_md)
+        iteration_snapshot = snapshot_iteration_file(
+            repo_root=repo_root,
+            instruction_path=instruction_path,
+            old_content=agents_md,
+            old_version=prior_version,
+        )
+        updated_agents_md, bumped_to = bump_patch_version(updated_agents_md)
         instruction_path.write_text(updated_agents_md)
         try:
+            add_paths = [str(instruction_path)]
+            if iteration_snapshot is not None:
+                add_paths.append(str(iteration_snapshot))
             subprocess.run(
-                ["git", "-C", str(repo_root), "add", str(instruction_path)],
+                ["git", "-C", str(repo_root), "add", *add_paths],
                 check=True, capture_output=True,
             )
+            commit_subject = f"clawdibrate: calibrate {instruction_path.name}"
+            if bumped_to is not None:
+                commit_subject = f"clawdibrate: calibrate {instruction_path.name} -> {bumped_to[0]}.{bumped_to[1]}.{bumped_to[2]}"
             subprocess.run(
                 ["git", "-C", str(repo_root), "commit", "-m",
-                 f"clawdibrate: calibrate {instruction_path.name}"],
+                 commit_subject],
                 check=True, capture_output=True,
             )
             print(f"\n✓ {instruction_path.name} updated and committed")
+            if iteration_snapshot is not None:
+                print(f"✓ Snapshot saved: {iteration_snapshot}")
+            if bumped_to is not None:
+                print(f"✓ Version bumped to {bumped_to[0]}.{bumped_to[1]}.{bumped_to[2]}")
+            commit_success = True
         except subprocess.CalledProcessError as exc:
             print(f"\n✓ {instruction_path.name} updated (git commit failed: {exc})")
+    stage_times["persist_and_commit"] = time.perf_counter() - persist_start
 
     # Compute and log aggregate section scores
     agg_scores = {s: round(sum(scores) / len(scores), 3) for s, scores in section_scores.items()}
@@ -1320,3 +1555,39 @@ def calibrate(
     if auto_section_skills and section_skill_suggestions:
         print("\n  [section-skills] applying extractions (src/skills + npx + commit)…")
         _materialize_section_skills(repo_root, section_skill_suggestions, instruction_path)
+
+    changed = updated_agents_md != agents_md
+    estimate = estimate_iterations_to_target(history_dir, target_score=target_score)
+    est_text = estimate.get("iterations_remaining")
+    print(
+        "Optimization estimate: "
+        f"target={target_score:.2f}, current={estimate.get('current_avg', 0.0):.3f}, "
+        f"remaining={est_text if est_text is not None else 'unknown'} "
+        f"(trend={estimate.get('slope_per_run', 0.0):+.4f}/run, {estimate.get('confidence')})"
+    )
+
+    summary = _summary(
+        changed=changed,
+        failures=len(all_failures),
+        avg_score=avg,
+        section_scores_agg=agg_scores,
+    )
+    instrumentation.update(
+        {
+            "instruction_file": instruction_path.name,
+            "commit_success": commit_success,
+            "version_bumped_to": (
+                f"{bumped_to[0]}.{bumped_to[1]}.{bumped_to[2]}" if bumped_to is not None else None
+            ),
+            "iteration_snapshot": str(iteration_snapshot) if iteration_snapshot is not None else None,
+            "changed": changed,
+            "failures": len(all_failures),
+            "avg_score": avg,
+            "tokens_before": tokens_before["total"],
+            "tokens_after": tokens_after_total,
+            "token_delta": token_delta,
+            "result": summary,
+        }
+    )
+    save_instrumentation(history_dir, instrumentation)
+    return summary

@@ -1,6 +1,6 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.7.0** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.9.0** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **PATCH** = backward-compatible fixes (wording, tuning). **MINOR** = new backward-compatible functionality (new sections, commands, skills). **MAJOR** = incompatible changes to the calibration loop contract or CLI interface.
 
@@ -43,6 +43,9 @@ export CLAWDIBRATE_AGENT_CMD='llm -s "$(cat {system_prompt})" {prompt}'
 python -m clawdibrate                              # calibrate from recorded transcripts
 python -m clawdibrate --agent cursor               # Cursor Agent CLI (or use .clawdibrate/env)
 python -m clawdibrate --agent codex                # use codex as the calibration agent
+python -m clawdibrate --mode fast                  # quick low-hanging-fruit pass
+python -m clawdibrate --mode progressive           # cancel-safe mini-iterations
+python -m clawdibrate --mode max --target-score 0.9 # iterate until optimized / plateau
 python -m clawdibrate --no-auto-section-skills     # calibrate only; do not auto-create section skills / npx
 python -m clawdibrate --transcript path/to.jsonl   # calibrate from one transcript
 python -m clawdibrate --dry-run                    # inspect the run without editing AGENTS.md
@@ -153,6 +156,7 @@ Calibration complete | avg=0.00 | failures=0 | sections={Commands: 0.0, Setup: 0
 ```
 
 Persist reflection history to `.clawdibrate/history/reflections.jsonl` and baseline metrics to `.clawdibrate/history/baselines.jsonl`.
+Persist run instrumentation (stage timings, mode, estimate, token deltas) to `.clawdibrate/history/instrumentation.jsonl`.
 
 ---
 

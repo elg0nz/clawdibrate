@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 for tracking AGENTS.md versions.
 
+## [0.9.0] - 2026-04-02
+
+### Added
+- **Loop execution modes** — `--mode fast`, `--mode progressive`, and `--mode max --target-score <float>`
+- **Developer instrumentation log** — `.clawdibrate/history/instrumentation.jsonl` with per-stage timings, token deltas, mode metadata, and optimization estimates
+- **v0_9_0 release notes** — `docs/v0_9_0/README.md` documenting env setup, modes, and loop behavior
+
+### Changed
+- **AGENTS.md commands** updated with fast/progressive/max mode examples
+- **AGENTS.md score tracking** now includes instrumentation persistence path
+
+### Fixed
+- **PATCH version progression restored in loop** — calibrations that update `AGENTS.md` now:
+  - snapshot pre-overwrite content to `.clawdibrate/iterations/AGENTS_vN.md`
+  - bump header patch version (`X.Y.Z -> X.Y.(Z+1)`)
+  - commit the updated instruction file (and snapshot file when created)
+
 ## [0.5.0] - 2026-04-01
 
 ### Added
