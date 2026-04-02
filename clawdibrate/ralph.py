@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 import os
-import uuid
+import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from typing import Any
 
 
 def _resolve_agent_template(agent: str) -> str:
@@ -43,7 +44,7 @@ def run_worker(
         template = apply_builtin_model_flag(template, agent, model)
 
     # Write prompt to temp file to avoid shell argument length limits
-    prompt_file = Path(f"/tmp/clawdibrate-prompt-{uuid.uuid4()}.txt")
+    prompt_file = Path(tempfile.mkstemp(prefix="clawdibrate-prompt-", suffix=".txt")[1])
     prompt_file.write_text(prompt)
 
     cmd = template.format(
@@ -53,7 +54,7 @@ def run_worker(
 
     result = subprocess.run(
         cmd,
-        shell=True,
+        shell=True,  # nosec B602 — cmd is built from internal templates, not user input
         stdout=subprocess.PIPE,
         stderr=None,
         text=True,
@@ -68,7 +69,7 @@ def run_worker(
     output = result.stdout.strip()
 
     # Persist to temp file for traceability
-    tmp_path = Path(f"/tmp/clawdibrate-worker-{uuid.uuid4()}.json")
+    tmp_path = Path(tempfile.mkstemp(prefix="clawdibrate-worker-", suffix=".json")[1])
     tmp_path.write_text(json.dumps({"cmd": cmd, "output": output, "returncode": result.returncode}))
 
     if result.returncode != 0:
@@ -78,11 +79,11 @@ def run_worker(
 
 
 def fan_out(
-    tasks: list[dict],
+    tasks: list[dict[str, Any]],
     workers: int = 4,
     model: str = "haiku",
     agent: str = "claude",
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """Run tasks in parallel using a thread pool.
 
     Each task dict must have: id, prompt, system_prompt_path.
@@ -93,9 +94,9 @@ def fan_out(
     if not tasks:
         return []
 
-    results: list[dict] = [None] * len(tasks)  # type: ignore[list-item]
+    results: list[dict[str, Any]] = [None] * len(tasks)  # type: ignore[list-item]
 
-    def _run(idx: int, task: dict) -> tuple[int, dict]:
+    def _run(idx: int, task: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         task_id = task["id"]
         try:
             output = run_worker(

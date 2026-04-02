@@ -7,6 +7,7 @@ import re
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from .instruction_files import DEFAULT_INSTRUCTION_FILES, _git, detect_instruction_file
 
@@ -22,7 +23,7 @@ def resolve_history_files(repo_root: Path, files: tuple[str, ...] | None) -> tup
     return (detected["active"]["relative_path"],)
 
 
-def iter_relevant_commits(repo_root: Path, files: tuple[str, ...], limit: int) -> list[dict]:
+def iter_relevant_commits(repo_root: Path, files: tuple[str, ...], limit: int) -> list[dict[str, Any]]:
     """Return recent commits that touched the tracked prompt files."""
     output = _git(
         repo_root,
@@ -112,11 +113,11 @@ def _sections_changed_in_diff(diff_text: str) -> list[str]:
 
 def analyze_section_churn(
     repo_root: Path,
-    commits: list[dict],
+    commits: list[dict[str, Any]],
     files: tuple[str, ...],
 ) -> dict[str, int]:
     """Return a mapping of section_name → churn_count across all commits."""
-    churn: Counter = Counter()
+    churn: Counter[str] = Counter()
     for commit in commits:
         for file_path in commit["files"]:
             if file_path not in files:

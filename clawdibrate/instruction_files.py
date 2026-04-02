@@ -6,6 +6,19 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
+from typing import TypedDict
+
+
+class _InstructionFileEntry(TypedDict):
+    path: Path
+    relative_path: str
+    commit_count: int
+    priority: int
+
+
+class _DetectResult(TypedDict):
+    active: _InstructionFileEntry
+    candidates: list[_InstructionFileEntry]
 
 DEFAULT_INSTRUCTION_FILES = (
     "AGENTS.md",
@@ -47,8 +60,8 @@ def git_commit_count(repo_root: Path, rel_path: str) -> int:
 def detect_instruction_file(
     repo_root: Path,
     candidates: tuple[str, ...] = DEFAULT_INSTRUCTION_FILES,
-) -> dict | None:
-    existing = []
+) -> _DetectResult | None:
+    existing: list[_InstructionFileEntry] = []
     for index, rel_path in enumerate(candidates):
         abs_path = repo_root / rel_path
         if not abs_path.exists():
@@ -204,7 +217,7 @@ def _ensure_permissions(repo_root: Path) -> bool:
     return True
 
 
-def ensure_clawdibrate_setup(repo_root: Path) -> dict:
+def ensure_clawdibrate_setup(repo_root: Path) -> dict[str, object]:
     detected = detect_instruction_file(repo_root)
     if not detected:
         raise RuntimeError(

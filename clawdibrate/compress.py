@@ -9,7 +9,7 @@ from pathlib import Path
 from .tokens import count_tokens, count_section_tokens
 
 # Common bloat patterns: (regex, replacement_hint)
-PATTERNS: list[dict] = [
+PATTERNS: list[dict[str, str]] = [
     {"pattern": r"\bIn order to\b", "replacement": "To", "label": "verbose preamble"},
     {"pattern": r"\bIt is important to note that\b", "replacement": "", "label": "filler phrase"},
     {"pattern": r"\bPlease make sure to\b", "replacement": "", "label": "filler phrase"},
@@ -28,9 +28,9 @@ PATTERNS: list[dict] = [
 ]
 
 
-def find_compressions(content: str) -> list[dict]:
+def find_compressions(content: str) -> list[dict[str, str | int]]:
     """Scan text for bloat patterns, return suggestions with token savings."""
-    suggestions: list[dict] = []
+    suggestions: list[dict[str, str | int]] = []
     for pat in PATTERNS:
         for match in re.finditer(pat["pattern"], content, re.IGNORECASE):
             before = match.group(0)
@@ -120,7 +120,7 @@ def run_compress_advisor(instruction_path: Path) -> None:
         if not suggestions:
             continue
 
-        section_savings = sum(s["tokens_saved"] for s in suggestions)
+        section_savings = sum(int(s["tokens_saved"]) for s in suggestions)
         total_savings += section_savings
 
         print(f"## {name} ({section_tokens:,} tokens, -{section_savings} potential)")

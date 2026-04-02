@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 SEARCH_TOOLS = {"Glob", "Grep", "Read", "Explore"}
 ACTION_TOOLS = {"Edit", "Write", "Bash", "NotebookEdit"}
@@ -23,7 +25,8 @@ CORRECTION_PATTERNS = re.compile(
 
 # Maps agent name -> parser callable.  Each parser takes (repo_root, session_id)
 # and returns (session_path: Path, events: list[dict]).
-_AGENT_PARSERS: dict[str, object] = {}
+_ParserFn = Callable[[Path, "str | None"], "tuple[Path, list[dict[str, Any]]]"]
+_AGENT_PARSERS: dict[str, _ParserFn] = {}
 
 # Known agent session directories (relative to $HOME).
 _AGENT_SESSION_HINTS: dict[str, str] = {
@@ -89,10 +92,10 @@ def find_latest_session(repo_root: Path, session_id: str | None = None) -> Path:
 
 def _parse_claude_session(
     repo_root: Path, session_id: str | None = None
-) -> tuple[Path, list[dict]]:
+) -> tuple[Path, list[dict[str, Any]]]:
     """Parse a Claude Code session JSONL and return (path, raw_events)."""
     session_path = find_latest_session(repo_root, session_id)
-    events: list[dict] = []
+    events: list[dict[str, Any]] = []
     for line in session_path.read_text().splitlines():
         line = line.strip()
         if not line:
@@ -112,12 +115,12 @@ _AGENT_PARSERS["claude"] = _parse_claude_session
 # ---------------------------------------------------------------------------
 
 
-def _make_stub_parser(agent_name: str):
+def _make_stub_parser(agent_name: str) -> _ParserFn:
     """Return a parser function that raises NotImplementedError."""
 
     def _stub_parser(
         repo_root: Path, session_id: str | None = None
-    ) -> tuple[Path, list[dict]]:
+    ) -> tuple[Path, list[dict[str, Any]]]:
         raise NotImplementedError(
             f"Session parsing for '{agent_name}' is not yet implemented. "
             f"Contributions welcome!  In the meantime, use "
@@ -136,7 +139,7 @@ for _agent in ("codex", "cursor", "opencode"):
 # ---------------------------------------------------------------------------
 
 
-def _extract_user_text(content: list | str) -> str:
+def _extract_user_text(content: list[Any] | str) -> str:
     """Extract plain text from a user message content."""
     if isinstance(content, str):
         return content
@@ -313,19 +316,19 @@ def dump_session(
     return output_path
 
 
-def _summarize_tool_args(tool_name: str, tool_input: dict) -> str:
+def _summarize_tool_args(tool_name: str, tool_input: dict[str, Any]) -> str:
     """Create a short summary of tool arguments."""
     if tool_name == "Read":
-        return tool_input.get("file_path", "")
+        return str(tool_input.get("file_path", ""))
     if tool_name == "Edit":
-        return tool_input.get("file_path", "")
+        return str(tool_input.get("file_path", ""))
     if tool_name == "Write":
-        return tool_input.get("file_path", "")
+        return str(tool_input.get("file_path", ""))
     if tool_name == "Glob":
-        return tool_input.get("pattern", "")
+        return str(tool_input.get("pattern", ""))
     if tool_name == "Grep":
-        return tool_input.get("pattern", "")
+        return str(tool_input.get("pattern", ""))
     if tool_name == "Bash":
         cmd = tool_input.get("command", "")
-        return cmd[:120] if cmd else ""
+        return str(cmd)[:120] if cmd else ""
     return json.dumps(tool_input)[:120]

@@ -20,10 +20,16 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, cast, TypedDict
 
 from .instruction_files import detect_instruction_file
 from .tokens import count_tokens, count_file_tokens, count_section_tokens
 from .ralph import fan_out
+
+class _FileTokens(TypedDict):
+    total: int
+    sections: dict[str, int]
+
 
 # Force unbuffered stdout so progress prints appear immediately in parent processes
 if hasattr(sys.stdout, "reconfigure"):
@@ -91,7 +97,7 @@ def apply_builtin_model_flag(template: str, agent: str, model: str | None) -> st
 # Deterministic metrics (no LLM call)
 # ---------------------------------------------------------------------------
 
-def compute_metrics(transcript: list[dict]) -> dict:
+def compute_metrics(transcript: list[dict[str, Any]]) -> dict[str, Any]:
     """Compute deterministic token-waste metrics from a structured transcript.
 
     Returns the five Tier-1 metrics defined in card 010:
@@ -300,7 +306,7 @@ def compute_recency_weight(
 # Diversity metric (card 006)
 # ---------------------------------------------------------------------------
 
-def compute_diversity(failures: list[dict]) -> dict:
+def compute_diversity(failures: list[dict[str, Any]]) -> dict[str, Any]:
     """Count distinct failure categories and transcripts addressed by a set of failures.
 
     Returns dict with category_count, transcript_count, and overfit_warning flag.
@@ -356,7 +362,7 @@ def run_agent(
     # Capture stdout (contains the JSON result) but stream stderr to terminal for progress
     result = subprocess.run(
         cmd,
-        shell=True,
+        shell=True,  # nosec B602 — cmd is built from internal templates, not user input
         stdout=subprocess.PIPE,
         stderr=None,
         text=True,
@@ -373,7 +379,7 @@ def run_agent(
 # JSON extraction
 # ---------------------------------------------------------------------------
 
-def extract_json(text: str):
+def extract_json(text: str) -> Any:
     """Extract first JSON object or array from text."""
     try:
         return json.loads(text)
@@ -408,7 +414,7 @@ def _is_git_repo(repo_root: Path) -> bool:
 def _is_tracked(repo_root: Path, rel_path: str) -> bool:
     """Check if a file is tracked by git."""
     try:
-        result = subprocess.run(
+        subprocess.run(
             ["git", "-C", str(repo_root), "ls-files", "--error-unmatch", rel_path],
             check=True, capture_output=True,
         )
@@ -591,14 +597,14 @@ def replace_section(content: str, section_name: str, new_content: str) -> str:
 # Persistence
 # ---------------------------------------------------------------------------
 
-def load_reflections(history_dir: Path) -> list[dict]:
+def load_reflections(history_dir: Path) -> list[dict[str, Any]]:
     path = history_dir / "reflections.jsonl"
     if not path.exists():
         return []
     return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
-def save_reflection(history_dir: Path, entry: dict):
+def save_reflection(history_dir: Path, entry: dict[str, Any]) -> None:
     history_dir.mkdir(parents=True, exist_ok=True)
     with open(history_dir / "reflections.jsonl", "a") as f:
         f.write(json.dumps(entry) + "\n")
@@ -612,7 +618,7 @@ def _central_scoreboard_path(repo_root: Path) -> Path:
     return board_dir / f"{slug}.jsonl"
 
 
-def save_score(history_dir: Path, entry: dict, repo_root: Path | None = None):
+def save_score(history_dir: Path, entry: dict[str, Any], repo_root: Path | None = None) -> None:
     history_dir.mkdir(parents=True, exist_ok=True)
     with open(history_dir / "scores.jsonl", "a") as f:
         f.write(json.dumps(entry) + "\n")
@@ -622,7 +628,7 @@ def save_score(history_dir: Path, entry: dict, repo_root: Path | None = None):
             f.write(json.dumps({"repo": str(repo_root.resolve()), **entry}) + "\n")
 
 
-def save_instrumentation(history_dir: Path, entry: dict):
+def save_instrumentation(history_dir: Path, entry: dict[str, Any]) -> None:
     """Append developer-facing run instrumentation metrics."""
     history_dir.mkdir(parents=True, exist_ok=True)
     with open(history_dir / "instrumentation.jsonl", "a") as f:
@@ -633,7 +639,7 @@ def estimate_iterations_to_target(
     history_dir: Path,
     target_score: float = 0.9,
     lookback: int = 8,
-) -> dict:
+) -> dict[str, Any]:
     """Estimate remaining calibration iterations from recent score trend."""
     path = history_dir / "scores.jsonl"
     if not path.exists():
@@ -705,7 +711,7 @@ def estimate_iterations_to_target(
     }
 
 
-def load_baselines(history_dir: Path) -> dict:
+def load_baselines(history_dir: Path) -> dict[str, Any]:
     path = history_dir / "baselines.jsonl"
     if not path.exists():
         return {}
@@ -717,7 +723,7 @@ def load_baselines(history_dir: Path) -> dict:
     return baselines
 
 
-def save_baseline(history_dir: Path, entry: dict):
+def save_baseline(history_dir: Path, entry: dict[str, Any]) -> None:
     history_dir.mkdir(parents=True, exist_ok=True)
     with open(history_dir / "baselines.jsonl", "a") as f:
         f.write(json.dumps(entry) + "\n")
@@ -727,7 +733,7 @@ def save_baseline(history_dir: Path, entry: dict):
 # Convergence tracking
 # ---------------------------------------------------------------------------
 
-def is_converged(section_name: str, reflections: list[dict], threshold: float = 0.95, min_runs: int = 3) -> bool:
+def is_converged(section_name: str, reflections: list[dict[str, Any]], threshold: float = 0.95, min_runs: int = 3) -> bool:
     """Return True if section scored >= threshold across the last min_runs calibration runs."""
     recent_scores = [
         r["section_scores"].get(section_name)
@@ -941,12 +947,12 @@ def calibrate(
     run_mode: str = "standard",
     run_iteration: int | None = None,
     target_score: float = 0.9,
-):
+) -> dict[str, Any]:
     """Run one calibration pass: identify → judge → implement → persist."""
     started_at = datetime.now(timezone.utc)
     perf_start = time.perf_counter()
     stage_times: dict[str, float] = {}
-    instrumentation = {
+    instrumentation: dict[str, Any] = {
         "timestamp": started_at.isoformat(),
         "mode": run_mode,
         "iteration": run_iteration,
@@ -964,7 +970,7 @@ def calibrate(
         avg_score: float,
         section_scores_agg: dict[str, float] | None = None,
         reason: str = "completed",
-    ) -> dict:
+    ) -> dict[str, Any]:
         estimate = estimate_iterations_to_target(history_dir, target_score=target_score)
         optimized = bool(
             avg_score >= target_score
@@ -999,7 +1005,7 @@ def calibrate(
     agents_md = read_instruction_file(instruction_path)
 
     # Token tracking: measure before
-    tokens_before = count_file_tokens(instruction_path)
+    tokens_before: _FileTokens = cast(_FileTokens, count_file_tokens(instruction_path))
     tokens_start = tokens_before["total"]
     # Optional hard cap (--token-budget); default None = never reject edits for size
     hard_token_cap = token_budget
@@ -1050,18 +1056,18 @@ def calibrate(
     else:
         print(f"\nAll {len(train_transcripts)} transcript(s) used for training (too few for hold-out)")
 
-    all_failures: list[dict] = []
+    all_failures: list[dict[str, Any]] = []
     section_scores: dict[str, list[float]] = {}
     baselines = load_baselines(history_dir)
-    all_deltas: list[dict] = []
+    all_deltas: list[dict[str, Any]] = []
 
     # Pre-compute metrics and baselines for all transcripts
     metrics_start = time.perf_counter()
-    transcript_data: list[dict] = []
+    transcript_data: list[dict[str, Any]] = []
     for t_path in train_transcripts:
         print(f"\n→ Processing transcript: {t_path.name}")
-        transcript = [json.loads(line) for line in t_path.read_text().splitlines() if line.strip()]
-        metrics = compute_metrics(transcript)
+        transcript_events: list[dict[str, Any]] = [json.loads(line) for line in t_path.read_text().splitlines() if line.strip()]
+        metrics = compute_metrics(transcript_events)
         print(f"  metrics: {metrics}")
 
         recency_weight = compute_recency_weight(t_path, staleness_halflife_days)
@@ -1078,7 +1084,7 @@ def calibrate(
             }
             save_baseline(history_dir, baseline_entry)
             baselines[transcript_key] = baseline_entry
-            print(f"  baseline saved (first run, empty-context)")
+            print("  baseline saved (first run, empty-context)")
 
         baseline_metrics = baselines[transcript_key]["metrics"]
         delta = {k: round(metrics[k] - baseline_metrics.get(k, 0), 3) for k in metrics}
@@ -1105,7 +1111,7 @@ def calibrate(
     # Stage 1: Bug identification (parallel when workers > 1)
     if not dry_run:
         stage1_start = time.perf_counter()
-        bug_id_tasks = []
+        bug_id_tasks: list[dict[str, Any]] = []
         for i, td in enumerate(transcript_data):
             t_path = td["t_path"]
             prompt = (
@@ -1125,7 +1131,7 @@ def calibrate(
             print(f"\n  [stage 1/3] running {len(bug_id_tasks)} bug-identifiers in parallel (workers={workers})…")
             bug_results = fan_out(bug_id_tasks, workers=workers, model=model, agent=agent)
         else:
-            print(f"\n  [stage 1/3] running bug-identifiers sequentially…")
+            print("\n  [stage 1/3] running bug-identifiers sequentially…")
             bug_results = []
             for task in bug_id_tasks:
                 raw = run_agent(
@@ -1136,7 +1142,7 @@ def calibrate(
         instrumentation["stage_1_tasks"] = len(bug_id_tasks)
 
         # Collect failures from bug-identification results
-        all_pending_failures: list[tuple[dict, dict]] = []  # (failure, transcript_data)
+        all_pending_failures: list[tuple[dict[str, Any], dict[str, Any]]] = []  # (failure, transcript_data)
         for br in bug_results:
             td = transcript_data[br["id"]]
             if br["error"]:
@@ -1157,7 +1163,7 @@ def calibrate(
 
         # Stage 2: Judge each failure (parallel when workers > 1)
         stage2_start = time.perf_counter()
-        judge_tasks = []
+        judge_tasks: list[dict[str, Any]] = []
         for i, (failure, td) in enumerate(all_pending_failures):
             section = failure["responsible_section"]
             section_content = extract_section(agents_md, section)
@@ -1176,7 +1182,7 @@ def calibrate(
             print(f"\n  [stage 2/3] running {len(judge_tasks)} judge calls in parallel (workers={workers})…")
             judge_results = fan_out(judge_tasks, workers=workers, model=model, agent=agent)
         else:
-            print(f"\n  [stage 2/3] running judge calls sequentially…")
+            print("\n  [stage 2/3] running judge calls sequentially…")
             judge_results = []
             for task in judge_tasks:
                 raw = run_agent(agent, PROMPTS_DIR / "judge.md", task["prompt"], model=model)
@@ -1207,7 +1213,7 @@ def calibrate(
         return summary
 
     # Stage 3: Implement fixes per section
-    sections_to_fix = {}
+    sections_to_fix: dict[str, list[dict[str, Any]]] = {}
     for f in all_failures:
         section = f.get("responsible_section", "unknown")
         if section != "unknown":
@@ -1219,10 +1225,10 @@ def calibrate(
 
     updated_agents_md = agents_md
     edit_distances: dict[str, int] = {}
-    diversity_metrics: dict[str, dict] = {}
+    diversity_metrics: dict[str, dict[str, Any]] = {}
 
     # Filter sections eligible for fixing
-    eligible_sections: dict[str, tuple[list[dict], float, dict]] = {}
+    eligible_sections: dict[str, tuple[list[dict[str, Any]], float, dict[str, Any]]] = {}
     for section, failures in sections_to_fix.items():
         if is_converged(section, reflections):
             print(f"  ✓ {section}: converged, skipping")
@@ -1238,7 +1244,7 @@ def calibrate(
         eligible_sections[section] = (failures, avg_weight, diversity)
 
     # Build implementer tasks
-    impl_tasks = []
+    impl_tasks: list[dict[str, Any]] = []
     impl_section_order = []
     for section, (failures, avg_weight, diversity) in eligible_sections.items():
         section_content = extract_section(agents_md, section)
@@ -1267,7 +1273,7 @@ def calibrate(
             print(f"\n  [stage 3/3] running {len(impl_tasks)} implementer calls in parallel (workers={workers})…")
             impl_results = fan_out(impl_tasks, workers=workers, model=model, agent=agent)
         else:
-            print(f"\n  [stage 3/3] running implementer calls sequentially…")
+            print("\n  [stage 3/3] running implementer calls sequentially…")
             impl_results = []
             for task in impl_tasks:
                 raw = run_agent(
@@ -1302,7 +1308,7 @@ def calibrate(
             score_improvement = avg_weight
 
             if edit_dist == 0:
-                print(f"  edit_distance=0 (no change)")
+                print("  edit_distance=0 (no change)")
                 continue
 
             # Token-based ROI gating (card 005)
@@ -1370,7 +1376,6 @@ def calibrate(
     stage_times["compression"] = time.perf_counter() - compression_start
 
     # Card 003: score test set after changes (without modifying AGENTS.md)
-    test_scores: dict[str, list[float]] = {}
     if test_transcripts and updated_agents_md != agents_md:
         print(f"\n--- Hold-out test scoring ({len(test_transcripts)} transcript(s)) ---")
         for t_path in test_transcripts:

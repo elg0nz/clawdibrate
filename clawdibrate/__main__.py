@@ -1,7 +1,6 @@
 """Entry point for transcript-based AGENTS.md calibration."""
 
 import argparse
-import os
 from pathlib import Path
 
 from .git_history import synthesize_transcript_from_git
@@ -18,7 +17,7 @@ from .orchestrator import (
 from .session_dump import dump_session
 
 
-def _resolve_mode_defaults(args):
+def _resolve_mode_defaults(args: argparse.Namespace) -> None:
     """Apply opinionated defaults for fast/progressive/max while preserving explicit flags."""
     mode = args.mode
     explicit_max_transcripts = args.max_transcripts is not None
@@ -49,7 +48,7 @@ def _list_transcripts(repo_root: Path) -> list[Path]:
     return sorted(transcripts_dir.glob("*.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True)
 
 
-def _run_progressive_mode(args, agent_name: str, repo_root: Path):
+def _run_progressive_mode(args: argparse.Namespace, agent_name: str, repo_root: Path) -> None:
     """Run many small, cancel-safe calibrations over recent transcripts."""
     transcripts = _list_transcripts(repo_root)
     if not transcripts:
@@ -120,7 +119,7 @@ def _run_progressive_mode(args, agent_name: str, repo_root: Path):
         print("\nProgressive mode cancelled by user; all completed mini-iterations remain committed.")
 
 
-def _run_max_mode(args, agent_name: str, repo_root: Path):
+def _run_max_mode(args: argparse.Namespace, agent_name: str, repo_root: Path) -> None:
     """Run until target optimization is reached or trend plateaus."""
     max_iters = args.max_iterations or 25
     no_change_streak = 0
@@ -165,7 +164,7 @@ def _run_max_mode(args, agent_name: str, repo_root: Path):
         print("\nMax mode cancelled by user; completed iterations remain committed.")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Clawdibrate transcript-based AGENTS.md calibration"
     )
@@ -327,8 +326,11 @@ def main():
 
     if args.compress:
         from .instruction_files import detect_instruction_file
-        instruction_path = detect_instruction_file(repo_root)
-        run_compress_advisor(instruction_path)
+        instruction_result = detect_instruction_file(repo_root)
+        if instruction_result is None:
+            print("No instruction file found.")
+            return
+        run_compress_advisor(instruction_result["active"]["path"])
         return
 
     if args.synthesize_git_history:

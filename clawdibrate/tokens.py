@@ -35,7 +35,7 @@ def count_section_tokens(content: str) -> dict[str, int]:
     return result
 
 
-def count_file_tokens(path: Path) -> dict:
+def count_file_tokens(path: Path) -> dict[str, int | dict[str, int]]:
     """Count tokens for a file: total + per-section breakdown.
 
     Returns {"total": int, "sections": dict[str, int]}.
