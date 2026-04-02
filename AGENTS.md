@@ -97,6 +97,10 @@ Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orches
 
 **Boundary:** AGENTS.md is injected as system prompt context — do not re-read it unless editing a specific line via the Edit tool.
 
+**Known Gotchas:**
+- Read large files once fully (no `offset`/`limit`) rather than iteratively chunking — chunking wastes 4x the calls.
+- Either delegate exploration to an Explore agent OR read files directly — never both for the same files.
+
 ---
 
 
@@ -122,6 +126,7 @@ Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orches
 - ✅ Always: complete `docs/vX_Y_Z/README.md` before committing a version — no commit without README
 - ✅ Always: create/edit skills in `src/skills/{name}/SKILL.md`, then run `npx skills add ./src/skills --agent <detected-agents> --skill '*' -y`
 - ✅ Always: spawn parallel agents for independent kanban cards — do not work them sequentially
+- ✅ Always: when an agent is spawned to read/explore files, do not also read those same files in the main thread
 - ✅ Always: follow version workflow: SPEC.md → kanban cards → copy icebox from prior version → work cards → README.md → CHANGELOG.md → bump version → commit
 - ✅ Always: `/clawdbrt:loop` calibrates from transcripts. `/clawdbrt:add-new-features` bumps MINOR only. MAJOR requires explicit human decision.
 - ✅ Always: before implementing any capability, check if an installed tool already does it — read its docs first
@@ -136,6 +141,7 @@ Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orches
 - 🚫 Never: auto-bump MAJOR version — requires explicit human decision
 
 ---
+
 
 ## Known Gotchas
 
