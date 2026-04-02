@@ -79,6 +79,12 @@ def main():
         help="Half-life in days for transcript recency decay (default: 30)",
     )
     parser.add_argument(
+        "--max-transcripts",
+        type=int,
+        default=None,
+        help="Maximum number of transcripts to process per calibration run (default: all)",
+    )
+    parser.add_argument(
         "--dump-session",
         action="store_true",
         help="Convert the most recent Claude Code session into a clawdibrate transcript",
@@ -132,6 +138,7 @@ def main():
         dry_run=args.dry_run,
         holdout_ratio=args.holdout_ratio,
         staleness_halflife_days=args.staleness_halflife_days,
+        max_transcripts=args.max_transcripts,
     )
 
 

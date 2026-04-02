@@ -620,6 +620,7 @@ def calibrate(
     dry_run: bool = False,
     holdout_ratio: float = 0.2,
     staleness_halflife_days: float = 30.0,
+    max_transcripts: int | None = None,
 ):
     """Run one calibration pass: identify → judge → implement → persist."""
     repo_root = resolve_repo_root(repo_root)
@@ -646,6 +647,9 @@ def calibrate(
         return
 
     # Card 003: hold-out transcript split
+    if max_transcripts and len(transcripts) > max_transcripts:
+        transcripts = transcripts[-max_transcripts:]
+        print(f"\nCapped to {max_transcripts} most recent transcripts")
     train_transcripts, test_transcripts = split_transcripts(transcripts, holdout_ratio)
     if test_transcripts:
         print(f"\nHold-out split: {len(train_transcripts)} train, {len(test_transcripts)} test")
