@@ -1,6 +1,8 @@
 """Entry point for transcript-based AGENTS.md calibration."""
 
 import argparse
+import json
+import sys
 from pathlib import Path
 
 from .git_history import synthesize_transcript_from_git
@@ -15,6 +17,64 @@ from .orchestrator import (
     resolve_default_calibration_agent,
 )
 from .session_dump import dump_session
+
+
+_SPARK_CHARS = "▁▂▃▄▅▆▇█"
+
+
+def _sparkline(values: list[float]) -> str:
+    """Return an ASCII sparkline string for a list of floats using Unicode block chars."""
+    if not values:
+        return ""
+    lo, hi = min(values), max(values)
+    span = hi - lo
+    result = []
+    for v in values:
+        if span == 0:
+            idx = len(_SPARK_CHARS) // 2
+        else:
+            idx = int((v - lo) / span * (len(_SPARK_CHARS) - 1))
+            idx = max(0, min(idx, len(_SPARK_CHARS) - 1))
+        result.append(_SPARK_CHARS[idx])
+    return "".join(result)
+
+
+def _show_scores(repo_root: Path) -> None:
+    """Read .clawdibrate/history/scores.jsonl and print a score history table + sparkline."""
+    scores_path = repo_root / ".clawdibrate" / "history" / "scores.jsonl"
+    if not scores_path.exists():
+        print("No scores found. Run calibration first.")
+        return
+
+    entries = []
+    for line in scores_path.read_text().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entries.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+
+    if not entries:
+        print("No scores found. Run calibration first.")
+        return
+
+    last_10 = entries[-10:]
+    print(f"{'Date':<12}  {'Avg':>6}  {'Token Delta':>12}")
+    print("-" * 34)
+    for e in last_10:
+        ts = e.get("timestamp", "")
+        date_str = ts[:10] if ts else "unknown"
+        avg = e.get("avg", 0.0)
+        token_delta = e.get("token_delta", 0)
+        sign = "+" if token_delta > 0 else ""
+        print(f"{date_str:<12}  {avg:>6.3f}  {sign}{token_delta:>11}")
+
+    avgs = [e.get("avg", 0.0) for e in entries]
+    spark = _sparkline(avgs)
+    print()
+    print(f"Trend ({len(avgs)} runs): {spark}")
 
 
 def _resolve_mode_defaults(args: argparse.Namespace) -> None:
@@ -164,6 +224,57 @@ def _run_max_mode(args: argparse.Namespace, agent_name: str, repo_root: Path) ->
         print("\nMax mode cancelled by user; completed iterations remain committed.")
 
 
+def _run_idempotency_check(args: argparse.Namespace) -> None:
+    """Run calibrate twice on the same transcript and verify convergence.
+
+    Exit code 0 if the second pass produces no changes; 1 if it diverges.
+    Requires args.transcript to be set.
+    """
+    if not args.transcript:
+        print("error: --check-idempotent requires --transcript", file=sys.stderr)
+        sys.exit(1)
+
+    repo_root = (args.repo or Path.cwd()).resolve()
+    load_clawdibrate_env(repo_root)
+    agent_name = args.agent or resolve_default_calibration_agent()
+
+    shared_kwargs = dict(
+        agent=agent_name,
+        transcript_path=args.transcript,
+        repo_root=args.repo,
+        dry_run=args.dry_run,
+        holdout_ratio=args.holdout_ratio,
+        staleness_halflife_days=args.staleness_halflife_days,
+        max_transcripts=args.max_transcripts,
+        token_budget=args.token_budget,
+        workers=args.workers,
+        model=args.model,
+        auto_section_skills=not args.no_auto_section_skills,
+        run_mode=args.mode,
+        target_score=args.target_score,
+    )
+
+    print("[idempotency] Run 1 …")
+    calibrate(**shared_kwargs)
+
+    print("[idempotency] Run 2 …")
+    result2 = calibrate(**shared_kwargs)
+
+    changed2 = result2.get("changed", False)
+    edit_distances: dict[str, int] = result2.get("edit_distances", {})
+    all_zero = all(d == 0 for d in edit_distances.values())
+
+    if not changed2 or all_zero:
+        print("PASS: calibration is idempotent")
+        sys.exit(0)
+    else:
+        print("FAIL: calibration diverged on second pass")
+        for section, dist in edit_distances.items():
+            if dist > 0:
+                print(f"  section={section!r} edit_distance={dist}")
+        sys.exit(1)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Clawdibrate transcript-based AGENTS.md calibration"
@@ -297,12 +408,31 @@ def main() -> None:
         default=1,
         help="How many transcripts to process per progressive iteration (default: 1)",
     )
+    parser.add_argument(
+        "--scores",
+        action="store_true",
+        help="Print score history with ASCII sparkline and exit",
+    )
+    parser.add_argument(
+        "--check-idempotent",
+        action="store_true",
+        help="Run calibrate twice on the same transcript and verify the second pass makes no changes (requires --transcript)",
+    )
 
     args = parser.parse_args()
     repo_root = (args.repo or Path.cwd()).resolve()
     load_clawdibrate_env(repo_root)
     agent_name = args.agent or resolve_default_calibration_agent()
     _resolve_mode_defaults(args)
+
+    if args.scores:
+        _show_scores(repo_root)
+        sys.exit(0)
+
+    if args.check_idempotent:
+        _run_idempotency_check(args)
+        return  # _run_idempotency_check calls sys.exit; this is a safety fallback
+
     if args.setup:
         result = ensure_clawdibrate_setup(repo_root)
         print(f"Active instruction file: {result['active_path']}")
