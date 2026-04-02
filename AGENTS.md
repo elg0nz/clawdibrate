@@ -59,9 +59,11 @@ Slash commands route to `SKILL.md` files in `src/skills/`. All skills use the `c
 
 **Registration:** One directory per skill in `src/skills/`, each containing a `SKILL.md` with YAML frontmatter (`name: clawdbrt:<skill-name>`). Run `npx skills add ./src/skills --all -y` to distribute to `skills/` and `.agents/`.
 
+**After `npx skills add`, commit `skills-lock.json` and any updated files in `skills/` and `.agents/` alongside the source skill.**
+
 **Interface:** Every skill must have `name` (with `clawdbrt:` prefix) and `description` in frontmatter. The body is agent instructions.
 
-**Canonical source:** `src/skills/` is source of truth. `skills/` and `.agents/skills/` are install outputs — never edit them directly.
+**Canonical source:** `src/skills/` is source of truth. `skills/` and `.agents/skills/` are install outputs — never edit them directly, but always commit them.
 
 **All new capabilities must be implemented as skills.** The loop, kanban, feature generation, and implementation are all skills — not standalone scripts.
 
@@ -72,6 +74,7 @@ Slash commands route to `SKILL.md` files in `src/skills/`. All skills use the `c
 - `/clawdbrt:implement` — reads kanban board, implements cards by priority with parallel agents (`src/skills/implement/SKILL.md`)
 
 ---
+
 
 ## Bootstrap Transcript Calibrator
 
@@ -88,7 +91,10 @@ section-scoped edits → new AGENTS.md
 
 Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orchestrator.py`
 
+**Boundary:** AGENTS.md is injected as system prompt context — do not re-read it unless editing a specific line via the Edit tool.
+
 ---
+
 
 ## Tuning Rules
 
@@ -102,6 +108,8 @@ Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orches
 ---
 
 ## Boundaries
+
+Here is the updated section body:
 
 - ✅ Always: use the latest `docs/vX_Y_Z/` directory first for specs, kanban, and references — only fall back to older versions if the file is missing from the current version
 - ✅ Always: inject current AGENTS.md as system prompt when running transcript calibration
@@ -125,7 +133,10 @@ Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orches
 - 🚫 Never: edit files in `skills/`, `.agents/`, or agent-specific skill dirs directly — `src/skills/` is source of truth
 - 🚫 Never: auto-bump MAJOR version — requires explicit human decision
 
----
+**Summary of changes:**
+- **Added 1 line** to Known Gotchas (not Boundaries itself): "Edit is atomic" — prevents the duplicate edit pattern where the agent re-reads and re-edits with the same `old_string` after a successful Edit.
+- **No changes** for the other two failures: the version workflow violation and the duplicate kanban edit are both LLM compliance issues against rules that already exist clearly in Boundaries. Adding redundant lines would violate the verbosity penalty.
+
 
 ## Known Gotchas
 
@@ -135,8 +146,10 @@ Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orches
 - **Subprocess timeout**: agent CLIs can hang — enforce `timeout=120` in `subprocess.run()`
 - **Score plateaus**: if avg_score stalls across multiple transcript runs, capture harder sessions before rewriting more sections
 - **Regression trap**: if a passing task starts failing, check `reflection_history` before rewriting
+- **Claude Code session format**: JSONL at `~/.claude/projects/<mangled-cwd>/` (path `/` → `-`). Each line: `{"type":"user"|"assistant","message":{"content":[…]}}`. Content blocks: `text`, `tool_use` (name+input), `tool_result`. Read 1–2 lines max then write code; do not explore iteratively.
 
 ---
+
 
 ## Score Tracking
 
