@@ -2,6 +2,7 @@
 
 ```bash
 npx skills add ./src/skills --all -y
+# After this completes, restart your terminal (or reload your IDE) so the new skills are available
 
 # Record a real session first
 /clawdbrt:record-start

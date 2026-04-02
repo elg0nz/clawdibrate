@@ -24,7 +24,7 @@
     "clawdbrt:commands": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "b98e039fe74def83ad824e7a1cbb665fe3ba64005fe370d5c25df09d0731a1ce"
+      "computedHash": "fe82a9f10e9123ba500cdaf20edef1e2fc6ca9fcb45cfcb716ad7b020dae2fd1"
     },
     "clawdbrt:identity": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
@@ -59,7 +59,7 @@
     "clawdbrt:loop": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "66f1071434b8aef0a25205e90dfd8b85e1e174098430c06923e44e034dc566b4"
+      "computedHash": "954fabf32fb94fe64f73a343f569dc8a95e9ad8bdee2b332a19583dc67cbb1a7"
     },
     "clawdbrt:present": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
@@ -99,7 +99,7 @@
     "clawdbrt:setup": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "219ef57d330069ac53de9bf656985c3358239b2ba3305e1bc18b8f8ccc06da38"
+      "computedHash": "492b2712d50d22a0974cf414d500801858ef0b90530ea4db11383de4b268cd64"
     },
     "clawdbrt:skills": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",

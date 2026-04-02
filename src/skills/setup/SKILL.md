@@ -30,3 +30,5 @@ export CLAWDIBRATE_AGENT_CMD='llm -s "$(cat {system_prompt})" {prompt}'
 That var takes precedence over `--agent` when set.
 
 Runtime: Python 3.10+ for `python -m clawdibrate`. Node.js (see `.tool-versions`) for skills CLI.
+
+**After skills install:** Tell the user to restart their terminal (or reload their IDE) so the new skills are picked up by their agent CLI.
