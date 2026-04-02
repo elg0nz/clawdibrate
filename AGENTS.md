@@ -119,7 +119,7 @@ Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orches
 
 - ✅ Always: use the latest `docs/vX_Y_Z/` directory first for specs, kanban, and references — only fall back to older versions if the file is missing from the current version
 - ✅ Always: inject current AGENTS.md as system prompt when running transcript calibration
-- ✅ Always: save each version as `AGENTS_vN.md` before overwriting
+- ✅ Always: save each version as `.clawdibrate/iterations/AGENTS_vN.md` before overwriting (never in the repo root)
 - ✅ Always: track `reflection_history` across all iterations (episodic memory)
 - ✅ Always: route failures to the specific section responsible, not the whole document
 - ✅ Always: `git commit` immediately after every version update — no uncommitted versions

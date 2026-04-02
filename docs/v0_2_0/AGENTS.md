@@ -85,7 +85,7 @@ SECTIONS = ["Setup", "Commands", "Bootstrap loop.py", "Tuning Rules", "Boundarie
 ## Boundaries
 
 - ✅ Always: inject current AGENTS.md as system prompt when running tasks
-- ✅ Always: save each version as `AGENTS_vN.md` before overwriting
+- ✅ Always: save each version as `.clawdibrate/iterations/AGENTS_vN.md` before overwriting (never in the repo root)
 - ✅ Always: track `reflection_history` across all iterations (episodic memory)
 - ✅ Always: route failures to the specific section responsible, not the whole document
 - ✅ Always: `git commit` immediately after every version update — no uncommitted versions
