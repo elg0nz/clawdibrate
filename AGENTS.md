@@ -1,6 +1,6 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.9.2** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.9.3** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **PATCH** = backward-compatible fixes (wording, tuning). **MINOR** = new backward-compatible functionality (new sections, commands, skills). **MAJOR** = incompatible changes to the calibration loop contract or CLI interface.
 
@@ -106,7 +106,7 @@ Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orches
 - **File paths over vague references.** `./docs/vX_Y_Z/specs/` not "the specs directory."
 - **Non-discoverable information only.** If readable from `README.md` or source, cut it.
 - **Under 700 words.** Sections over 100 words get scrutinized.
-- **Never full-rewrite sections scoring ≥ 0.8.** Targeted edits only — full rewrites cause regressions.
+- **Never full-rewrite sections scoring ≥ 0.8.** Check `.clawdibrate/history/scores.jsonl` before editing — block rewrites of converged sections.
 - **If externalizing sections to skills, do not re-add equivalent content to AGENTS.md in the same run.**
 - **If calibration changes same sections across runs, implement exponential backoff until new transcript data.**
 - **Penalize verbosity.** Bloat reduces task success ~2%, increases inference cost >20% (arxiv.org/abs/2602.11988).
@@ -114,22 +114,22 @@ Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orches
 
 ## Boundaries
 
-- Use latest `docs/vX_Y_Z/` first, fallback to older versions
-- Inject AGENTS.md as system prompt for transcript calibration
-- Save versions as `.clawdibrate/iterations/AGENTS_vN.md` before overwriting
+- Use latest `docs/vX_Y_Z/` first, fallback to older
+- Inject AGENTS.md as system prompt for calibration
+- Save `.clawdibrate/iterations/AGENTS_vN.md` before overwrite
 - Track `reflection_history` across iterations
-- Route failures to specific section, not whole document
-- `git commit` after every version update
-- Complete `docs/vX_Y_Z/README.md` before committing
-- Create/edit skills: `src/skills/{name}/SKILL.md`, run `npx skills add ./src/skills --agent <detected-agents> --skill '*' -y`
+- Route failures to specific section
+- `git commit` after version update
+- Complete `docs/vX_Y_Z/README.md` before commit
+- Skills: `src/skills/{name}/SKILL.md` → `npx skills add ./src/skills --agent <agents> --skill '*' -y`
 - Spawn parallel agents for independent kanban cards
 - Don't read files if agent spawned to read them
-- Workflow: SPEC.md → kanban → copy icebox → work cards → README.md → CHANGELOG.md → bump → commit
-- `/clawdbrt:loop` calibrates transcripts, `/clawdbrt:add-new-features` MINOR only, MAJOR needs human decision
-- Check installed tools before implementing
-- Ticket format: `clwdi-v{MAJOR}_{MINOR}_{PATCH}-{NNN}.md`, moving renames to target version, copy prior `icebox.md`
-- Ask first: new evaluation task types, judge threshold <0.7
-- Never: rewrite converged sections (≥0.95 score, 3+ iterations), remove Boundaries, add net lines without instruction (externalize to skills), use markdown checklists/TaskCreate (use kanban), edit `skills/`/`.agents/` directly (use `src/skills/`), auto-bump MAJOR
+- Flow: SPEC.md → kanban → icebox → cards → README.md → CHANGELOG.md → bump → commit
+- `/clawdbrt:loop` calibrates, `/clawdbrt:add-new-features` MINOR only, MAJOR needs approval
+- Check tools before implementing
+- Tickets: `clwdi-v{MAJOR}_{MINOR}_{PATCH}-{NNN}.md`, rename on move, copy `icebox.md`
+- Ask first: new eval types, judge <0.7
+- Never: rewrite converged (≥0.95, 3+ iter), remove Boundaries, add lines without instruction, use checklists/TaskCreate, edit `skills/`/`.agents/` directly, auto-bump MAJOR
 
 
 ## Known Gotchas
