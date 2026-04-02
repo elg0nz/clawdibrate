@@ -16,6 +16,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .instruction_files import detect_instruction_file
+
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 # Agent CLI templates. {system_prompt} = shell-quoted path to system prompt file, {prompt} = shell-quoted user prompt text.
@@ -228,54 +230,66 @@ def extract_json(text: str):
 # ---------------------------------------------------------------------------
 
 def resolve_repo_root(repo_root: Path | None = None) -> Path:
-    """Resolve the target repo root that contains AGENTS.md."""
+    """Resolve the target repo root that contains an instruction file."""
     if repo_root is None:
         repo_root = Path.cwd()
     repo_root = repo_root.resolve()
-    agents_md = repo_root / "AGENTS.md"
-    if not agents_md.exists():
-        raise FileNotFoundError(f"No AGENTS.md found at {agents_md}")
+    detected = detect_instruction_file(repo_root)
+    if not detected:
+        raise FileNotFoundError(
+            f"No AGENTS.md or CLAUDE.md found in {repo_root}. "
+            "Create one with the clawdibrate bootstrap line first."
+        )
     return repo_root
 
 
 def repo_paths(repo_root: Path) -> dict[str, Path]:
     """Return key repo-local paths used by the calibrator."""
+    detected = detect_instruction_file(repo_root)
+    if not detected:
+        raise FileNotFoundError(
+            f"No AGENTS.md or CLAUDE.md found in {repo_root}. "
+            "Create one with the clawdibrate bootstrap line first."
+        )
     return {
-        "agents_md": repo_root / "AGENTS.md",
+        "instruction_file": detected["active"]["path"],
         "transcripts_dir": repo_root / ".clawdibrate" / "transcripts",
         "history_dir": repo_root / ".clawdibrate" / "history",
     }
 
 
-def read_agents_md(agents_md_path: Path) -> str:
-    return agents_md_path.read_text()
+def read_instruction_file(instruction_path: Path) -> str:
+    return instruction_path.read_text()
 
 
-def extract_section(agents_md: str, section_name: str) -> str:
+def extract_section(content: str, section_name: str) -> str:
     pattern = rf"## {re.escape(section_name)}\s*\n(.*?)(?=\n## |\Z)"
-    match = re.search(pattern, agents_md, re.DOTALL)
+    match = re.search(pattern, content, re.DOTALL)
     return match.group(1).strip() if match else ""
 
 
-def replace_section(agents_md: str, section_name: str, new_content: str) -> str:
+def replace_section(content: str, section_name: str, new_content: str) -> str:
     """Replace a section's content. Uses lambda to avoid regex backreference corruption."""
     pattern = rf"(## {re.escape(section_name)}\s*\n)(.*?)(?=\n## |\Z)"
     return re.sub(
         pattern,
         lambda m: m.group(1) + new_content + "\n\n",
-        agents_md,
+        content,
         flags=re.DOTALL,
     )
 
 
-def save_versioned_agents_md(repo_root: Path, agents_md: str):
-    """Save AGENTS_vN.md before overwriting."""
+def save_versioned_instruction_file(instruction_path: Path, content: str):
+    """Save NAME_vN.md before overwriting the active instruction file."""
+    repo_root = instruction_path.parent
+    stem = instruction_path.stem
+    suffix = instruction_path.suffix
     existing = sorted(
-        repo_root.glob("AGENTS_v*.md"),
-        key=lambda p: int(p.stem.replace("AGENTS_v", "") or 0),
+        repo_root.glob(f"{stem}_v*{suffix}"),
+        key=lambda p: int(p.stem.replace(f"{stem}_v", "") or 0),
     )
-    n = (int(existing[-1].stem.replace("AGENTS_v", "")) + 1) if existing else 1
-    (repo_root / f"AGENTS_v{n}.md").write_text(agents_md)
+    n = (int(existing[-1].stem.replace(f"{stem}_v", "")) + 1) if existing else 1
+    (repo_root / f"{stem}_v{n}{suffix}").write_text(content)
 
 
 # ---------------------------------------------------------------------------
@@ -348,11 +362,11 @@ def calibrate(
     """Run one calibration pass: identify → judge → implement → persist."""
     repo_root = resolve_repo_root(repo_root)
     paths = repo_paths(repo_root)
-    agents_md_path = paths["agents_md"]
+    instruction_path = paths["instruction_file"]
     transcripts_dir = paths["transcripts_dir"]
     history_dir = paths["history_dir"]
 
-    agents_md = read_agents_md(agents_md_path)
+    agents_md = read_instruction_file(instruction_path)
     reflections = load_reflections(history_dir)
 
     # Discover transcripts
@@ -400,7 +414,7 @@ def calibrate(
 
         # Stage 1: Bug identification
         prompt = (
-            f"AGENTS.md:\n```\n{agents_md}\n```\n\n"
+            f"Instruction file ({instruction_path.name}):\n```\n{agents_md}\n```\n\n"
             f"Transcript:\n```\n{transcript_path.read_text()}\n```\n\n"
             f"Deterministic metrics: {json.dumps(metrics)}\n\n"
             f"Baseline metrics (empty-context): {json.dumps(baseline_metrics)}\n\n"
@@ -492,9 +506,9 @@ def calibrate(
 
     # Persist
     if updated_agents_md != agents_md:
-        save_versioned_agents_md(repo_root, agents_md)
-        agents_md_path.write_text(updated_agents_md)
-        print("\n✓ AGENTS.md updated")
+        save_versioned_instruction_file(instruction_path, agents_md)
+        instruction_path.write_text(updated_agents_md)
+        print(f"\n✓ {instruction_path.name} updated")
 
     # Compute and log aggregate section scores
     agg_scores = {s: round(sum(scores) / len(scores), 3) for s, scores in section_scores.items()}
@@ -509,6 +523,7 @@ def calibrate(
     reflection_entry = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "transcripts": [str(t) for t in transcripts],
+        "instruction_file": instruction_path.name,
         "failures": len(all_failures),
         "unmapped": unmapped_count,
         "section_scores": agg_scores,

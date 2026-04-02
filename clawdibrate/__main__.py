@@ -4,7 +4,10 @@ import argparse
 import os
 from pathlib import Path
 
-from .git_history import DEFAULT_HISTORY_FILES, synthesize_transcript_from_git
+from .git_history import synthesize_transcript_from_git
+from .instruction_files import (
+    ensure_clawdibrate_setup,
+)
 from .orchestrator import calibrate
 
 
@@ -33,12 +36,17 @@ def main():
         "--repo",
         type=Path,
         default=None,
-        help="Target repository root containing AGENTS.md",
+        help="Target repository root containing AGENTS.md or CLAUDE.md",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Show what would run without mutating AGENTS.md",
+    )
+    parser.add_argument(
+        "--setup",
+        action="store_true",
+        help="Configure the target repo to use clawdibrate and create a pointer file when needed",
     )
     parser.add_argument(
         "--synthesize-git-history",
@@ -54,17 +62,25 @@ def main():
     parser.add_argument(
         "--git-files",
         nargs="+",
-        default=list(DEFAULT_HISTORY_FILES),
-        help="Tracked prompt files to mine from git history",
+        default=None,
+        help="Tracked instruction files to mine from git history",
     )
 
     args = parser.parse_args()
     agent_name = args.agent or os.environ.get("CLAWDIBRATE_AGENT", "claude")
+    if args.setup:
+        repo_root = (args.repo or Path.cwd()).resolve()
+        result = ensure_clawdibrate_setup(repo_root)
+        print(f"Active instruction file: {result['active_path']}")
+        if result["created_pointer"]:
+            print(f"Created pointer file: {result['created_pointer']}")
+        return
+
     if args.synthesize_git_history:
         repo_root = (args.repo or Path.cwd()).resolve()
         output = synthesize_transcript_from_git(
             repo_root=repo_root,
-            files=tuple(args.git_files),
+            files=tuple(args.git_files) if args.git_files else None,
             limit=args.git_limit,
             output_path=args.transcript,
         )

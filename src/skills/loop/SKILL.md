@@ -5,23 +5,23 @@ description: Run transcript-based Clawdibrate calibration. Analyzes recorded ses
 
 # /loop — Transcript-Based Calibration
 
-Run Clawdibrate against recorded real-world transcripts to improve `AGENTS.md`.
+Run Clawdibrate against recorded real-world transcripts to improve the repo's active instruction file.
 
 ## When to Use
 
-When the user types `/clawdbrt:loop` or asks to calibrate or improve `AGENTS.md` from real sessions.
+When the user types `/clawdbrt:loop` or asks to calibrate or improve `AGENTS.md` or `CLAUDE.md` from real sessions.
 
 ## How It Works
 
 ```text
-transcript → deterministic metrics → bug-identifier → judge → implementer → updated AGENTS.md
+transcript → deterministic metrics → bug-identifier → judge → implementer → updated instruction file
 ```
 
 The loop skill now operates on transcript evidence, not synthetic tasks.
 
 ## Steps
 
-1. Ensure the target repo has an `AGENTS.md` and transcripts in `.clawdibrate/transcripts/`, or point to one with `--transcript`
+1. Ensure the target repo has an `AGENTS.md` or `CLAUDE.md`, and transcripts in `.clawdibrate/transcripts/`, or point to one with `--transcript`
    If no real transcripts exist yet, bootstrap one first with `python -m clawdibrate --repo /abs/path/to/repo --synthesize-git-history`.
 2. Run `python -m clawdibrate` in that repo, or use `python -m clawdibrate --repo /abs/path/to/repo`
 3. For each transcript:

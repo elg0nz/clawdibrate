@@ -1,6 +1,6 @@
 # Clawdibrate
 
-Transcript-based AGENTS.md calibration. Clawdibrate reads real agent transcripts, computes deterministic waste metrics, asks three meta-prompts to identify failures and draft fixes, then rewrites the responsible AGENTS.md sections.
+Transcript-based instruction-file calibration. Clawdibrate detects whether a repo primarily uses `AGENTS.md` or `CLAUDE.md`, reads real or synthetic transcripts, computes deterministic waste metrics, asks three meta-prompts to identify failures and draft fixes, then rewrites the active instruction file.
 
 ## Quickstart
 
@@ -15,6 +15,9 @@ npx skills add ./src/skills --all -y
 # Install once, then run against any repo with an AGENTS.md
 python -m pip install -e .
 
+# Configure a target repo to use clawdibrate
+python -m clawdibrate --repo ~/Code/other-repo --setup
+
 # Calibrate from all recorded transcripts in the current repo
 python -m clawdibrate
 
@@ -23,8 +26,8 @@ python -m clawdibrate --repo ~/Code/other-repo --agent codex
 python -m clawdibrate --repo ~/Code/other-repo --transcript .clawdibrate/transcripts/example.jsonl
 python -m clawdibrate --repo ~/Code/other-repo calibrate --dry-run
 
-# Bootstrap a synthetic transcript from git history when recordings do not exist
-python -m clawdibrate --repo ~/Code/other-repo --synthesize-git-history --git-files AGENTS.md CLAUDE.md
+# Bootstrap a synthetic transcript from the active instruction file's git history
+python -m clawdibrate --repo ~/Code/other-repo --synthesize-git-history
 ```
 
 ## How It Works
@@ -45,6 +48,22 @@ python -m clawdibrate --repo ~/Code/other-repo --transcript .clawdibrate/transcr
 python -m clawdibrate calibrate --dry-run
 
 If your Python scripts directory is on `PATH`, the installed `clawdibrate` console command is equivalent.
+
+## Setup Convention
+
+Before setup, add this line to the repo's instruction file:
+
+```text
+Use clawdibrate. If you don't have it available, git clone https://github.com/elg0nz/clawdibrate and run setup.
+```
+
+After `python -m clawdibrate --repo /path/to/repo --setup`, the active instruction file is updated to:
+
+```text
+This repo uses clawdibrate to auto-improve its AGENTS.md or CLAUDE.md.
+```
+
+If only one of `AGENTS.md` or `CLAUDE.md` exists, setup creates the missing counterpart as a pointer to the detected active file.
 ```
 
 ## Skills

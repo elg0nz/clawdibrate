@@ -1,6 +1,6 @@
 ---
 name: clawdbrt:record-from-git
-description: Create a bootstrap transcript in .clawdibrate/transcripts/ from recent git history touching AGENTS.md, AGENT.md, or CLAUDE.md files.
+description: Create a bootstrap transcript in .clawdibrate/transcripts/ from recent git history touching the repo's active instruction file.
 ---
 
 # /clawdbrt:record-from-git — Bootstrap Transcript From Git
@@ -13,7 +13,7 @@ When the user asks to bootstrap calibration from git history, or when a repo has
 
 ## Steps
 
-1. Confirm the target repo contains an `AGENTS.md`.
+1. Confirm the target repo contains an `AGENTS.md` or `CLAUDE.md`.
 2. Run:
    ```bash
    python -m clawdibrate --repo /abs/path/to/repo --synthesize-git-history

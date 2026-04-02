@@ -3,26 +3,21 @@
 from __future__ import annotations
 
 import json
-import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
-DEFAULT_HISTORY_FILES = (
-    "AGENTS.md",
-    "AGENT.md",
-    "CLAUDE.md",
-    "CLAUDE.local.md",
-)
+from .instruction_files import DEFAULT_INSTRUCTION_FILES, _git, detect_instruction_file
 
 
-def _git(repo_root: Path, args: list[str]) -> str:
-    result = subprocess.run(
-        ["git", "-C", str(repo_root), *args],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return result.stdout
+def resolve_history_files(repo_root: Path, files: tuple[str, ...] | None) -> tuple[str, ...]:
+    """Resolve which instruction file(s) to mine from git history."""
+    if files:
+        return files
+
+    detected = detect_instruction_file(repo_root, candidates=DEFAULT_INSTRUCTION_FILES)
+    if not detected:
+        return ()
+    return (detected["active"]["relative_path"],)
 
 
 def iter_relevant_commits(repo_root: Path, files: tuple[str, ...], limit: int) -> list[dict]:
@@ -96,11 +91,16 @@ def iter_relevant_commits(repo_root: Path, files: tuple[str, ...], limit: int) -
 
 def synthesize_transcript_from_git(
     repo_root: Path,
-    files: tuple[str, ...] = DEFAULT_HISTORY_FILES,
+    files: tuple[str, ...] | None = None,
     limit: int = 20,
     output_path: Path | None = None,
 ) -> Path:
     """Create a synthetic transcript file from git history."""
+    files = resolve_history_files(repo_root, files)
+    if not files:
+        raise RuntimeError(
+            "No instruction file found. Create AGENTS.md or CLAUDE.md first."
+        )
     commits = iter_relevant_commits(repo_root, files=files, limit=limit)
     if not commits:
         raise RuntimeError(
