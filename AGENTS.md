@@ -1,6 +1,6 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.10.0** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.10.1** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **PATCH** = backward-compatible fixes (wording, tuning). **MINOR** = new backward-compatible functionality (new sections, commands, skills). **MAJOR** = incompatible changes to the calibration loop contract or CLI interface.
 
@@ -63,12 +63,11 @@ Section skills: score <0.7 (3+ runs) or churn ≥3 → `src/skills/<kebab>/SKILL
 
 ## Bootstrap Transcript Calibrator
 
-```
 Transcript-based architecture: `transcript → metrics → bug-identifier → judge → implementer → section-scoped edits → new AGENTS.md`
 
 **Version specs:** Latest `docs/vX_Y_Z/specs/` first, fallback to older. Reference: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orchestrator.py`
 
-**Before analysis:** Verify transcript completeness. Request complete data if truncated.
+**Before analysis:** Verify transcript completeness and AGENTS.md input ends properly. STOP if truncated.
 
 **Boundary:** AGENTS.md injected as system prompt — NEVER use Read with offset/limit on AGENTS.md.
 
@@ -80,7 +79,6 @@ Transcript-based architecture: `transcript → metrics → bug-identifier → ju
 - Verify current content before editing AGENTS.md sections
 - Never output shell commands as markdown code blocks — always use Shell tool
 - Output complete, valid JSON with all required fields
-```
 
 
 ## Tuning Rules
@@ -150,87 +148,27 @@ Persist run instrumentation (stage timings, mode, estimate, token deltas) to `.c
 <!-- BEGIN BEADS INTEGRATION -->
 ## Issue Tracking with bd (beads)
 
-**IMPORTANT**: This project uses **bd (beads)** for ALL issue tracking. Do NOT use markdown TODOs, task lists, or other tracking methods.
+## Issue Tracking with bd (beads)
 
-### Why bd?
+**MANDATORY**: Use bd for ALL issue tracking. NO markdown TODOs/task lists.
 
-- Dependency-aware: Track blockers and relationships between issues
-- Git-friendly: Dolt-powered version control with native sync
-- Agent-optimized: JSON output, ready work detection, discovered-from links
-- Prevents duplicate tracking systems and confusion
-
-### Quick Start
-
-**Check for ready work:**
-
+**Commands:**
 ```bash
-bd ready --json
+bd ready --json                                    # Check ready work
+bd create "Title" --description="Context" -t bug|feature|task|epic|chore -p 0-4 --json
+bd create "Title" --deps discovered-from:bd-123 --json  # Link discovered work
+bd update <id> --claim --json                     # Claim atomically
+bd update <id> --priority 1 --json               # Update priority
+bd close <id> --reason "Done" --json             # Complete
+bd dolt push/pull                                 # Remote sync
 ```
 
-**Create new issues:**
+**Priorities:** 0=Critical, 1=High, 2=Medium, 3=Low, 4=Backlog
 
-```bash
-bd create "Issue title" --description="Detailed context" -t bug|feature|task -p 0-4 --json
-bd create "Issue title" --description="What this issue is about" -p 1 --deps discovered-from:bd-123 --json
-```
+**Workflow:** `bd ready` → `bd update <id> --claim` → work → `bd close <id>`
 
-**Claim and update:**
+**Rules:** Always `--json`, link discovered work with `discovered-from`, check `bd ready` first.
 
-```bash
-bd update <id> --claim --json
-bd update bd-42 --priority 1 --json
-```
-
-**Complete work:**
-
-```bash
-bd close bd-42 --reason "Completed" --json
-```
-
-### Issue Types
-
-- `bug` - Something broken
-- `feature` - New functionality
-- `task` - Work item (tests, docs, refactoring)
-- `epic` - Large feature with subtasks
-- `chore` - Maintenance (dependencies, tooling)
-
-### Priorities
-
-- `0` - Critical (security, data loss, broken builds)
-- `1` - High (major features, important bugs)
-- `2` - Medium (default, nice-to-have)
-- `3` - Low (polish, optimization)
-- `4` - Backlog (future ideas)
-
-### Workflow for AI Agents
-
-1. **Check ready work**: `bd ready` shows unblocked issues
-2. **Claim your task atomically**: `bd update <id> --claim`
-3. **Work on it**: Implement, test, document
-4. **Discover new work?** Create linked issue:
-   - `bd create "Found bug" --description="Details about what was found" -p 1 --deps discovered-from:<parent-id>`
-5. **Complete**: `bd close <id> --reason "Done"`
-
-### Auto-Sync
-
-bd automatically syncs via Dolt:
-
-- Each write auto-commits to Dolt history
-- Use `bd dolt push`/`bd dolt pull` for remote sync
-- No manual export/import needed!
-
-### Important Rules
-
-- ✅ Use bd for ALL task tracking
-- ✅ Always use `--json` flag for programmatic use
-- ✅ Link discovered work with `discovered-from` dependencies
-- ✅ Check `bd ready` before asking "what should I work on?"
-- ❌ Do NOT create markdown TODO lists
-- ❌ Do NOT use external issue trackers
-- ❌ Do NOT duplicate tracking systems
-
-For more details, see README.md and docs/QUICKSTART.md.
 
 ## Landing the Plane (Session Completion)
 
