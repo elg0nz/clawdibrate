@@ -18,6 +18,10 @@ from pathlib import Path
 
 from .instruction_files import detect_instruction_file
 
+# Force unbuffered stdout so progress prints appear immediately in parent processes
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(line_buffering=True)
+
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 # Agent CLI templates. {system_prompt} = shell-quoted path to system prompt file, {prompt} = shell-quoted user prompt text.
@@ -182,7 +186,7 @@ def _shell_quote(s: str) -> str:
     return "'" + s.replace("'", "'\\''") + "'"
 
 
-def run_agent(agent: str, system_prompt_path: Path, prompt: str, timeout: int = 120) -> str:
+def run_agent(agent: str, system_prompt_path: Path, prompt: str, timeout: int = 300) -> str:
     """Invoke a CLI agent with a system prompt file and a user prompt. Returns stdout.
 
     Resolution order:
@@ -199,9 +203,12 @@ def run_agent(agent: str, system_prompt_path: Path, prompt: str, timeout: int = 
         system_prompt=_shell_quote(str(system_prompt_path)),
         prompt=_shell_quote(prompt),
     )
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
+    # Capture stdout (contains the JSON result) but stream stderr to terminal for progress
+    result = subprocess.run(
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=None, text=True, timeout=timeout,
+    )
     if result.returncode != 0:
-        raise RuntimeError(f"Agent {agent} exited {result.returncode}: {result.stderr[:500]}")
+        raise RuntimeError(f"Agent {agent} exited {result.returncode}")
     return result.stdout.strip()
 
 
@@ -424,6 +431,7 @@ def calibrate(
             print(f"  [dry-run] would invoke bug-identifier on {transcript_path.name}")
             continue
 
+        print(f"  [stage 1/3] running bug-identifier…")
         raw = run_agent(agent, PROMPTS_DIR / "bug-identifier.md", prompt)
         failures = extract_json(raw)
         if not isinstance(failures, list):
@@ -446,6 +454,7 @@ def calibrate(
                 f"Section '{section}':\n```\n{section_content}\n```\n\n"
                 f"Deterministic metrics: {json.dumps(metrics)}"
             )
+            print(f"    [stage 2/3] judging failure in '{section}'…")
             judge_raw = run_agent(agent, PROMPTS_DIR / "judge.md", judge_prompt)
             verdict = extract_json(judge_raw)
             if not isinstance(verdict, dict):
@@ -497,6 +506,7 @@ def calibrate(
             f"Scored failures:\n{json.dumps(failures, indent=2)}\n\n"
             f"Recent history for this section:\n{json.dumps(recent_history, indent=2)}"
         )
+        print(f"  [stage 3/3] implementing fix for '{section}'…")
         new_content = run_agent(agent, PROMPTS_DIR / "implementer.md", implement_prompt)
         if new_content.strip():
             updated_agents_md = replace_section(updated_agents_md, section, new_content.strip())
