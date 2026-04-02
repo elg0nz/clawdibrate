@@ -21,6 +21,11 @@
       "sourceType": "local",
       "computedHash": "b1fdabcfad0c41d065707cd1f4484f42fc95e7b4592e8bdfa3083827f0077e54"
     },
+    "clawdbrt:identity": {
+      "source": "/Users/gonz/Code/clawdibrate/src/skills",
+      "sourceType": "local",
+      "computedHash": "bb8d7054cc573dda8540e73e339a2220af6739a87f5a0681f620cbdcce9f2f90"
+    },
     "clawdbrt:implement": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
