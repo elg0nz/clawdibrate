@@ -44,3 +44,4 @@ The loop skill now operates on transcript evidence, not synthetic tasks.
 - Never rewrite converged sections (≥ 0.95 across 3+ runs)
 - Prefer deterministic metrics before model judgment
 - Track reflections and baselines in `.clawdibrate/history/`
+- When section-skill suggestions print, the loop **applies** them by default: writes `src/skills/<slug>/SKILL.md`, replaces the section with a `/clawdbrt:` pointer, runs `npx skills add ./src/skills --all -y`, and commits. Use `python -m clawdibrate --no-auto-section-skills` to only print suggestions.

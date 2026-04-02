@@ -14,6 +14,7 @@ import math
 import os
 import random
 import re
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -616,37 +617,25 @@ def _section_to_skill_name(section: str) -> str:
     return slug
 
 
-def _suggest_section_skills(
+def _collect_section_skill_suggestions(
     repo_root: Path,
     agg_scores: dict[str, float],
     transcripts: list[Path],
     score_threshold: float = 0.7,
     churn_threshold: int = 3,
     token_threshold: int = 200,
-) -> None:
-    """Print suggestions to create section skills for low-scoring, high-churn, or large sections.
-
-    Triggers when:
-    - A section scores below score_threshold, OR
-    - A section has git churn >= churn_threshold in any transcript's session_start event, OR
-    - A section exceeds token_threshold tokens
-
-    Skips sections that already have a skill in src/skills/.
-    Also checks whether the instruction file already contains the 'See /clawdbrt:' pointer.
-    Suggestions are ranked by estimated token savings (highest first).
-    """
+) -> list[tuple[str, str, str, int]]:
+    """Return (section_title, skill_slug, reason_str, est_savings) ranked by savings (highest first)."""
     POINTER_TOKENS = 15
 
     skills_src = repo_root / "src" / "skills"
     instruction_path = repo_paths(repo_root)["instruction_file"]
     instruction_content = instruction_path.read_text() if instruction_path.exists() else ""
 
-    # Count tokens per section in instruction file
     section_tokens: dict[str, int] = {}
     if instruction_content:
         section_tokens = count_section_tokens(instruction_content)
 
-    # Gather churn data from git-history transcripts
     section_churn: dict[str, int] = {}
     for t_path in transcripts:
         try:
@@ -658,7 +647,7 @@ def _suggest_section_skills(
         except Exception:
             pass
 
-    suggestions = []
+    suggestions: list[tuple[str, str, str, int]] = []
     candidates = (
         set(agg_scores)
         | {s for s, c in section_churn.items() if c >= churn_threshold}
@@ -677,11 +666,13 @@ def _suggest_section_skills(
         skill_name = _section_to_skill_name(section)
         skill_path = skills_src / skill_name / "SKILL.md"
         if skill_path.exists():
-            continue  # already has a skill
+            continue
 
-        pointer = f"See /clawdbrt:{skill_name}"
-        if pointer in instruction_content:
-            continue  # already referenced
+        if (
+            f"`/clawdbrt:{skill_name}`" in instruction_content
+            or f"See /clawdbrt:{skill_name}" in instruction_content
+        ):
+            continue
 
         savings = max(tokens - POINTER_TOKENS, 0)
 
@@ -693,15 +684,118 @@ def _suggest_section_skills(
         reason.append(f"tokens={tokens}")
         suggestions.append((section, skill_name, ", ".join(reason), savings))
 
-    # Rank by token savings, highest first
     suggestions.sort(key=lambda s: s[3], reverse=True)
+    return suggestions
 
-    if suggestions:
-        print("\n💡 Section skill suggestions (create these to externalize tricky rules):")
-        for section, skill_name, reason, savings in suggestions:
-            print(f"  [{reason}] '{section}'")
-            print(f"    → create src/skills/{skill_name}/SKILL.md")
-            print(f"    → estimated savings: ~{savings} tokens (replace with 1-line pointer)")
+
+def _print_section_skill_suggestions(suggestions: list[tuple[str, str, str, int]]) -> None:
+    if not suggestions:
+        return
+    print("\n💡 Section skill suggestions (create these to externalize tricky rules):")
+    for section, skill_name, reason, savings in suggestions:
+        print(f"  [{reason}] '{section}'")
+        print(f"    → create src/skills/{skill_name}/SKILL.md")
+        print(f"    → estimated savings: ~{savings} tokens (replace with 1-line pointer)")
+
+
+def _materialize_section_skills(
+    repo_root: Path,
+    suggestions: list[tuple[str, str, str, int]],
+    instruction_path: Path,
+) -> None:
+    """Write SKILL.md files, replace sections with pointers, run ``npx skills add``, git commit."""
+    skills_src = repo_root / "src" / "skills"
+    if not skills_src.parent.is_dir():
+        print("\n⚠ auto section-skills: no src/skills parent — skipping")
+        return
+
+    skills_src.mkdir(parents=True, exist_ok=True)
+    try:
+        body = instruction_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        print(f"\n⚠ auto section-skills: could not read instruction file: {exc}")
+        return
+
+    new_body = body
+    created_slugs: list[str] = []
+
+    for section, skill_name, _reason, _savings in suggestions:
+        section_body = extract_section(new_body, section)
+        if not section_body.strip():
+            print(f"  ⚠ section-skills: empty body for '{section}' — skipping")
+            continue
+
+        skill_dir = skills_src / skill_name
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        skill_file = skill_dir / "SKILL.md"
+        desc = (
+            f"Externalized {instruction_path.name} heading {section!r} "
+            f"as clawdbrt:{skill_name} (clawdibrate auto-extract)."
+        )
+        desc_yaml = desc.replace("\\", "\\\\").replace('"', '\\"')
+        skill_md = (
+            "---\n"
+            f"name: clawdbrt:{skill_name}\n"
+            f'description: "{desc_yaml}"\n'
+            "---\n\n"
+            f"# {section}\n\n"
+            f"{section_body.strip()}\n"
+        )
+        skill_file.write_text(skill_md, encoding="utf-8")
+        pointer = f"See `/clawdbrt:{skill_name}` for detailed guidance."
+        new_body = replace_section(new_body, section, pointer)
+        created_slugs.append(skill_name)
+        print(f"  ✓ wrote src/skills/{skill_name}/SKILL.md and stubbed section '{section}'")
+
+    if not created_slugs:
+        return
+
+    instruction_path.write_text(new_body, encoding="utf-8")
+
+    if shutil.which("npx") and (repo_root / "package.json").is_file():
+        print("\n  [section-skills] running: npx skills add ./src/skills --all -y")
+        proc = subprocess.run(
+            ["npx", "skills", "add", "./src/skills", "--all", "-y"],
+            cwd=str(repo_root),
+            text=True,
+            env=os.environ,
+        )
+        if proc.returncode != 0:
+            print(
+                f"  ⚠ npx skills add exited {proc.returncode} — "
+                f"run manually: cd {repo_root} && npx skills add ./src/skills --all -y"
+            )
+    else:
+        print(
+            "\n  ⚠ npx or package.json missing — commit SKILL.md files and run "
+            "`npx skills add ./src/skills --all -y` in the repo root."
+        )
+
+    to_add: list[Path] = [instruction_path]
+    for slug in created_slugs:
+        to_add.append(skills_src / slug / "SKILL.md")
+    lock = repo_root / "skills-lock.json"
+    if lock.is_file():
+        to_add.append(lock)
+
+    try:
+        for p in to_add:
+            subprocess.run(
+                ["git", "-C", str(repo_root), "add", str(p)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        msg = f"clawdibrate: externalize {len(created_slugs)} section(s) to skills ({', '.join(created_slugs)})"
+        subprocess.run(
+            ["git", "-C", str(repo_root), "commit", "-m", msg],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        print(f"\n✓ Section skills committed ({len(created_slugs)} skill(s))")
+    except subprocess.CalledProcessError as exc:
+        print(f"\n⚠ section-skills git commit failed: {exc}")
 
 
 def calibrate(
@@ -715,6 +809,7 @@ def calibrate(
     token_budget: int | None = None,
     workers: int = 4,
     model: str = "haiku",
+    auto_section_skills: bool = True,
 ):
     """Run one calibration pass: identify → judge → implement → persist."""
     repo_root = resolve_repo_root(repo_root)
@@ -727,10 +822,18 @@ def calibrate(
 
     # Token tracking: measure before
     tokens_before = count_file_tokens(instruction_path)
-    if token_budget is None:
-        token_budget = tokens_before["total"]
-    budget_90 = int(token_budget * 0.9)
-    print(f"\nTokens before: {tokens_before['total']:,} | budget: {token_budget:,}")
+    tokens_start = tokens_before["total"]
+    # Optional hard cap (--token-budget); default None = never reject edits for size
+    hard_token_cap = token_budget
+    if hard_token_cap is not None:
+        budget_90 = int(hard_token_cap * 0.9)
+        print(f"\nTokens before: {tokens_start:,} | hard cap: {hard_token_cap:,} (explicit --token-budget)")
+    else:
+        budget_90 = None
+        print(
+            f"\nTokens before: {tokens_start:,} | no hard cap — "
+            f"edits apply freely; compression runs if the file grows past this baseline"
+        )
     reflections = load_reflections(history_dir)
 
     # Discover transcripts
@@ -938,14 +1041,15 @@ def calibrate(
     for section, (failures, avg_weight, diversity) in eligible_sections.items():
         section_content = extract_section(agents_md, section)
         section_tokens = count_tokens(section_content)
-        remaining_budget = token_budget - count_tokens(updated_agents_md) + section_tokens
         recent_history = [r for r in reflections[-5:] if r.get("section") == section]
         implement_prompt = (
             f"Current section '{section}':\n```\n{section_content}\n```\n\n"
             f"Scored failures:\n{json.dumps(failures, indent=2)}\n\n"
             f"Recent history for this section:\n{json.dumps(recent_history, indent=2)}\n\n"
-            f"Token context: current_section_tokens={section_tokens}, remaining_budget={remaining_budget}\n"
-            f"Your output MUST NOT exceed {section_tokens} tokens. Prefer compression."
+            f"Token context: section_tokens={section_tokens}, file_tokens_at_run_start={tokens_start}\n"
+            f"**Shrink or hold size:** output must use fewer or equal tokens than this section now. "
+            f"If you add a line for a failure, delete or merge other lines so the net change is not longer. "
+            f"Prefer tightening existing bullets over new paragraphs."
         )
         impl_tasks.append({
             "id": len(impl_tasks),
@@ -953,9 +1057,6 @@ def calibrate(
             "system_prompt_path": str(PROMPTS_DIR / "implementer.md"),
         })
         impl_section_order.append((section, avg_weight))
-
-    # Track section ROI for post-loop budget enforcement
-    _section_roi_tracker: list[tuple[str, float, str, str]] = []  # (section, roi, new_content, old_content)
 
     # Run implementer tasks (parallel for independent sections when workers > 1)
     if impl_tasks:
@@ -1016,41 +1117,40 @@ def calibrate(
                 else:
                     print(f"  ⚠ {section}: token growth (+{token_delta_section}) accepted — improvement {score_improvement:.3f} >= 0.5")
 
-            # Token budget enforcement: check if this change would exceed budget
             candidate = replace_section(updated_agents_md, section, new_content)
             candidate_tokens = count_tokens(candidate)
-            if candidate_tokens > token_budget:
-                print(f"  ⚠ {section}: rejected — would push tokens to {candidate_tokens:,} (budget: {token_budget:,})")
+            if hard_token_cap is not None and candidate_tokens > hard_token_cap:
+                print(
+                    f"  ⚠ {section}: rejected — would push file to {candidate_tokens:,} tokens "
+                    f"(hard cap {hard_token_cap:,} from --token-budget)"
+                )
                 continue
-            if candidate_tokens > budget_90:
-                print(f"  ⚠ {section}: approaching budget — {candidate_tokens:,}/{token_budget:,} ({candidate_tokens/token_budget*100:.1f}%)")
+            if (
+                hard_token_cap is not None
+                and budget_90 is not None
+                and candidate_tokens > budget_90
+            ):
+                print(
+                    f"  ⚠ {section}: approaching hard cap — {candidate_tokens:,}/{hard_token_cap:,} "
+                    f"({candidate_tokens / hard_token_cap * 100:.1f}%)"
+                )
 
             updated_agents_md = candidate
-            # Track ROI for post-loop budget enforcement
-            _section_roi_tracker.append((section, token_roi, new_content, section_content))
             print(f"  ✏ {section}: updated")
 
-    # Post-loop total budget enforcement: reject lowest-ROI changes until under budget
-    total_tokens_now = count_tokens(updated_agents_md)
-    if total_tokens_now > token_budget and _section_roi_tracker:
-        print(f"\n⚠ Over budget after all fixes: {total_tokens_now:,} > {token_budget:,} — reverting lowest-ROI changes")
-        # Sort by ROI ascending (lowest first = revert first)
-        _section_roi_tracker.sort(key=lambda x: x[1])
-        for section, roi, new_content, old_content in _section_roi_tracker:
-            if count_tokens(updated_agents_md) <= token_budget:
-                break
-            updated_agents_md = replace_section(updated_agents_md, section, old_content)
-            print(f"  ↩ reverted '{section}' (token_roi={roi:.4f})")
-
-    # Optional compression pass: if still over budget, compress largest sections
+    # Compression pass: if the file grew past the pre-run baseline, shrink largest sections first
     post_impl_tokens = count_tokens(updated_agents_md)
-    if post_impl_tokens > token_budget and updated_agents_md != agents_md:
+    if post_impl_tokens > tokens_start and updated_agents_md != agents_md:
         from .compress import compress_section
         from .tokens import count_section_tokens as _count_sections
-        print(f"\n  [compression] over budget ({post_impl_tokens:,} > {token_budget:,}), running compression…")
+
+        print(
+            f"\n  [compression] file grew ({post_impl_tokens:,} > {tokens_start:,} baseline) — "
+            f"compressing largest sections toward baseline…"
+        )
         section_toks = _count_sections(updated_agents_md)
         for sec_name, sec_toks in sorted(section_toks.items(), key=lambda x: -x[1]):
-            if count_tokens(updated_agents_md) <= token_budget:
+            if count_tokens(updated_agents_md) <= tokens_start:
                 break
             sec_content = extract_section(updated_agents_md, sec_name)
             if not sec_content.strip():
@@ -1060,7 +1160,7 @@ def calibrate(
                 updated_agents_md = replace_section(updated_agents_md, sec_name, compressed)
                 print(f"    compressed [{sec_name}]: -{saved} tokens")
         final_tokens = count_tokens(updated_agents_md)
-        print(f"  [compression] tokens after: {final_tokens:,} (budget: {token_budget:,})")
+        print(f"  [compression] tokens after: {final_tokens:,} (baseline was {tokens_start:,})")
 
     # Card 003: score test set after changes (without modifying AGENTS.md)
     test_scores: dict[str, list[float]] = {}
@@ -1162,7 +1262,7 @@ def calibrate(
         "tokens_before": tokens_before["total"],
         "tokens_after": tokens_after_total,
         "token_delta": token_delta,
-        "token_budget": token_budget,
+        "token_budget": hard_token_cap,
         "section_token_deltas": section_token_deltas,
     }
     save_reflection(history_dir, reflection_entry)
@@ -1181,14 +1281,22 @@ def calibrate(
             "tokens_before": tokens_before["total"],
             "tokens_after": tokens_after_total,
             "token_delta": token_delta,
-            "token_budget": token_budget,
+            "token_budget": hard_token_cap,
         },
         repo_root=repo_root,
     )
 
     # Token summary
     sign = "+" if token_delta >= 0 else ""
-    print(f"\nTokens: {tokens_before['total']:,} → {tokens_after_total:,} ({sign}{token_delta:,}, {sign}{token_pct:.1f}%) | budget: {token_budget:,}")
+    cap_note = (
+        f"hard_cap={hard_token_cap:,}"
+        if hard_token_cap is not None
+        else "hard_cap=none (compression targets pre-run size if file grows)"
+    )
+    print(
+        f"\nTokens: {tokens_before['total']:,} → {tokens_after_total:,} "
+        f"({sign}{token_delta:,}, {sign}{token_pct:.1f}%) | {cap_note}"
+    )
     if section_token_deltas:
         for sec, delta_val in section_token_deltas.items():
             s = "+" if delta_val >= 0 else ""
@@ -1205,5 +1313,10 @@ def calibrate(
             status = "OVERFIT WARNING" if div["overfit_warning"] else "ok"
             print(f"Diversity [{sec}]:     {div['category_count']} categories, {div['transcript_count']} transcripts ({status})")
 
-    # Suggest section skills for persistently low-scoring or high-churn sections
-    _suggest_section_skills(repo_root, agg_scores, train_transcripts)
+    section_skill_suggestions = _collect_section_skill_suggestions(
+        repo_root, agg_scores, train_transcripts
+    )
+    _print_section_skill_suggestions(section_skill_suggestions)
+    if auto_section_skills and section_skill_suggestions:
+        print("\n  [section-skills] applying extractions (src/skills + npx + commit)…")
+        _materialize_section_skills(repo_root, section_skill_suggestions, instruction_path)

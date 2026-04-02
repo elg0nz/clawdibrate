@@ -90,7 +90,7 @@ def main():
         "--token-budget",
         type=int,
         default=None,
-        help="Max token count for instruction file (default: None = current file size)",
+        help="Optional hard cap on total file tokens; default none (no rejections; compression if file grows past pre-run size)",
     )
     parser.add_argument(
         "--workers",
@@ -117,6 +117,11 @@ def main():
         "--compress",
         action="store_true",
         help="Run compression advisor on the instruction file and print suggestions",
+    )
+    parser.add_argument(
+        "--no-auto-section-skills",
+        action="store_true",
+        help="Do not create src/skills/*, replace sections with pointers, or run npx skills add",
     )
 
     args = parser.parse_args()
@@ -171,6 +176,7 @@ def main():
         token_budget=args.token_budget,
         workers=args.workers,
         model=args.model,
+        auto_section_skills=not args.no_auto_section_skills,
     )
 
 

@@ -63,6 +63,8 @@ For **Cursor Agent** (headless `cursor agent --print`), set `CLAWDIBRATE_AGENT=c
 
 Subprocess workers inherit the current **`os.environ`** explicitly so nested CLIs see the same variables.
 
+After a successful calibration pass, **section-skill suggestions** (large or low-scoring `AGENTS.md` sections) are **applied automatically**: new `src/skills/<name>/SKILL.md` files, a one-line pointer in the instruction file, `npx skills add ./src/skills --all -y`, and a git commit. Disable with **`--no-auto-section-skills`**.
+
 ## Setup Convention
 
 Before setup, add this line to the repo's instruction file:

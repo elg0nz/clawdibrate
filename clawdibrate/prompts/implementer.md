@@ -45,6 +45,7 @@ Example output:
 - **Under 100 words per section.** Scrutinize anything longer.
 - **Never full-rewrite sections scoring ≥ 0.95 across 3+ runs.** Targeted edits only.
 - **Penalize verbosity.** Each added line must prevent a specific identified failure.
+- **Net shrink or tie.** Prefer fewer tokens than the current section; if you add a line, remove or merge others so total size does not grow.
 - **Do not add generalities.** "Be careful" or "think first" are not system prompt instructions.
 - **One failure = at most one line.** If a failure requires a paragraph to fix, AGENTS.md can't fix it.
 - **Stay repository-specific.** Only use commands, paths, naming rules, and tools evidenced by the current AGENTS.md or the scored failures.
@@ -56,7 +57,7 @@ Example output:
 - Output only the section body (no `## Section Name` heading)
 - Preserve all lines that address failures NOT in the current input list
 - Do not add lines that weren't triggered by a specific failure
-- The output must be shorter than or equal in length to the input, unless failures require new lines
+- The output must be shorter than or equal in tokens to the input; never pad or explain — tighten instead
 
 Output ONLY the replacement section body. No preamble, no summary, no explanation, no meta-commentary.
 
