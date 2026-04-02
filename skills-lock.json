@@ -21,6 +21,11 @@
       "sourceType": "local",
       "computedHash": "b1fdabcfad0c41d065707cd1f4484f42fc95e7b4592e8bdfa3083827f0077e54"
     },
+    "clawdbrt:commands": {
+      "source": "/Users/gonz/Code/clawdibrate/src/skills",
+      "sourceType": "local",
+      "computedHash": "b98e039fe74def83ad824e7a1cbb665fe3ba64005fe370d5c25df09d0731a1ce"
+    },
     "clawdbrt:identity": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
@@ -30,6 +35,11 @@
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
       "computedHash": "f4bb7e3ca69557c816268364578c6df6bd77f39e4842d85a0b4d44a424bbe97b"
+    },
+    "clawdbrt:issue-tracking-with-bd-beads": {
+      "source": "/Users/gonz/Code/clawdibrate/src/skills",
+      "sourceType": "local",
+      "computedHash": "7fb88ed779352e224396faac0e35810b6370017402cf6e0ba2155a38fd8a1063"
     },
     "clawdbrt:kanban": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
@@ -41,10 +51,20 @@
       "sourceType": "local",
       "computedHash": "40066706a271aa2e5169c9a4978eb68c17a61e2a6a38537e1c0f847e253fdd59"
     },
+    "clawdbrt:landing-the-plane-session-completion": {
+      "source": "/Users/gonz/Code/clawdibrate/src/skills",
+      "sourceType": "local",
+      "computedHash": "3ba11764d756b1ddd6c6e3cc4fa79dcbcab879d42df1648225eb3726cead0d6a"
+    },
     "clawdbrt:loop": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "f005499c5ca91ae08b358668a4c683e93f38eba64d02030a9b6bb9c882b1ea88"
+      "computedHash": "66f1071434b8aef0a25205e90dfd8b85e1e174098430c06923e44e034dc566b4"
+    },
+    "clawdbrt:presubmit": {
+      "source": "/Users/gonz/Code/clawdibrate/src/skills",
+      "sourceType": "local",
+      "computedHash": "18557b59eeca4a55a92f205d5859c9446755fbc3645c9469c23003b799cf6f06"
     },
     "clawdbrt:record-from-git": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
@@ -85,6 +105,11 @@
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
       "computedHash": "75e83409fbf6a7e3982e79dd0c4755a2ce28dbb45eae92de22c41be4f2859fc7"
+    },
+    "clawdbrt:tuning-rules": {
+      "source": "/Users/gonz/Code/clawdibrate/src/skills",
+      "sourceType": "local",
+      "computedHash": "b6d88d2dd52ccae4bd5ae2ea050c4405c100bb889d0ffa4472e85886338c4639"
     },
     "deploy-to-vercel": {
       "source": "vercel-labs/agent-skills",

@@ -35,22 +35,8 @@ npx skills add ./src/skills --agent claude-code cursor codex --skill '*' -y
 
 ## Commands
 
-```bash
-python -m clawdibrate                              # calibrate from recorded transcripts
-python -m clawdibrate --agent cursor               # Cursor Agent CLI (or use .clawdibrate/env)
-python -m clawdibrate --agent codex                # use codex as the calibration agent
-python -m clawdibrate --mode fast                  # quick low-hanging-fruit pass
-python -m clawdibrate --mode progressive           # cancel-safe mini-iterations
-python -m clawdibrate --mode max --target-score 0.9 # iterate until optimized / plateau
-python -m clawdibrate --no-auto-section-skills     # calibrate only; do not auto-create section skills / npx
-python -m clawdibrate --transcript path/to.jsonl   # calibrate from one transcript
-python -m clawdibrate --dry-run                    # inspect the run without editing AGENTS.md
-python -m clawdibrate --scores                     # print score history + ASCII sparkline
-python -m clawdibrate --check-idempotent --transcript path/to.jsonl  # convergence assertion
-python -m clawdibrate --token-budget 5000          # hard cap on file tokens
-```
+See `/clawdbrt:commands` for detailed guidance.
 
----
 
 ## Skills
 
@@ -83,14 +69,7 @@ Transcript-based architecture: `transcript → metrics → bug-identifier → ju
 
 ## Tuning Rules
 
-- **Exact CLI commands over prose.** `python -m clawdibrate --agent codex` not "run the calibrator."
-- **File paths over vague references.** `./docs/vX_Y_Z/specs/` not "the specs directory."
-- **Non-discoverable information only.** If readable from `README.md` or source, cut it.
-- **Under 700 words.** Sections over 100 words get scrutinized.
-- **Never full-rewrite sections scoring ≥ 0.8.** Check `.clawdibrate/history/scores.jsonl` before editing — block rewrites of converged sections.
-- **If externalizing sections to skills, do not re-add equivalent content to AGENTS.md in the same run.**
-- **If calibration changes same sections across runs, implement exponential backoff until new transcript data.**
-- **Penalize verbosity.** Bloat reduces task success ~2%, increases inference cost >20% (arxiv.org/abs/2602.11988).
+See `/clawdbrt:tuning-rules` for detailed guidance.
 
 
 ## Boundaries
@@ -148,52 +127,10 @@ Persist run instrumentation (stage timings, mode, estimate, token deltas) to `.c
 <!-- BEGIN BEADS INTEGRATION -->
 ## Issue Tracking with bd (beads)
 
-## Issue Tracking with bd (beads)
-
-**MANDATORY**: Use bd for ALL issue tracking. NO markdown TODOs/task lists.
-
-**Commands:**
-```bash
-bd ready --json                                    # Check ready work
-bd create "Title" --description="Context" -t bug|feature|task|epic|chore -p 0-4 --json
-bd create "Title" --deps discovered-from:bd-123 --json  # Link discovered work
-bd update <id> --claim --json                     # Claim atomically
-bd update <id> --priority 1 --json               # Update priority
-bd close <id> --reason "Done" --json             # Complete
-bd dolt push/pull                                 # Remote sync
-```
-
-**Priorities:** 0=Critical, 1=High, 2=Medium, 3=Low, 4=Backlog
-
-**Workflow:** `bd ready` → `bd update <id> --claim` → work → `bd close <id>`
-
-**Rules:** Always `--json`, link discovered work with `discovered-from`, check `bd ready` first.
+See `/clawdbrt:issue-tracking-with-bd-beads` for detailed guidance.
 
 
 ## Landing the Plane (Session Completion)
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+See `/clawdbrt:landing-the-plane-session-completion` for detailed guidance.
 
-**MANDATORY WORKFLOW:**
-
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git pull --rebase
-   bd sync
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
-
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
-
-<!-- END BEADS INTEGRATION -->
