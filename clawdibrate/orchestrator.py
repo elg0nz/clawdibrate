@@ -541,6 +541,78 @@ def is_converged(section_name: str, reflections: list[dict], threshold: float = 
 # Main calibration loop
 # ---------------------------------------------------------------------------
 
+def _section_to_skill_name(section: str) -> str:
+    """Convert a section heading to a kebab-case skill name."""
+    slug = re.sub(r"[^a-z0-9]+", "-", section.lower()).strip("-")
+    return slug
+
+
+def _suggest_section_skills(
+    repo_root: Path,
+    agg_scores: dict[str, float],
+    transcripts: list[Path],
+    score_threshold: float = 0.7,
+    churn_threshold: int = 3,
+) -> None:
+    """Print suggestions to create section skills for low-scoring or high-churn sections.
+
+    Triggers when:
+    - A section scores below score_threshold, OR
+    - A section has git churn >= churn_threshold in any transcript's session_start event
+
+    Skips sections that already have a skill in src/skills/.
+    Also checks whether the instruction file already contains the 'See /clawdbrt:' pointer.
+    """
+    skills_src = repo_root / "src" / "skills"
+    instruction_path = repo_paths(repo_root)["instruction_file"]
+    instruction_content = instruction_path.read_text() if instruction_path.exists() else ""
+
+    # Gather churn data from git-history transcripts
+    section_churn: dict[str, int] = {}
+    for t_path in transcripts:
+        try:
+            first_line = t_path.open().readline()
+            event = json.loads(first_line)
+            if event.get("source") == "git_history":
+                for sec, count in event.get("section_churn", {}).items():
+                    section_churn[sec] = max(section_churn.get(sec, 0), count)
+        except Exception:
+            pass
+
+    suggestions = []
+    candidates = set(agg_scores) | {s for s, c in section_churn.items() if c >= churn_threshold}
+    for section in candidates:
+        score = agg_scores.get(section)
+        churn = section_churn.get(section, 0)
+        low_score = score is not None and score < score_threshold
+        high_churn = churn >= churn_threshold
+        if not (low_score or high_churn):
+            continue
+
+        skill_name = _section_to_skill_name(section)
+        skill_path = skills_src / skill_name / "SKILL.md"
+        if skill_path.exists():
+            continue  # already has a skill
+
+        pointer = f"See /clawdbrt:{skill_name}"
+        if pointer in instruction_content:
+            continue  # already referenced
+
+        reason = []
+        if low_score:
+            reason.append(f"score={score:.2f}")
+        if high_churn:
+            reason.append(f"churn={churn}")
+        suggestions.append((section, skill_name, ", ".join(reason)))
+
+    if suggestions:
+        print("\n💡 Section skill suggestions (create these to externalize tricky rules):")
+        for section, skill_name, reason in suggestions:
+            print(f"  [{reason}] '{section}'")
+            print(f"    → create src/skills/{skill_name}/SKILL.md")
+            print(f"    → add to section: See /clawdbrt:{skill_name} for detailed guidance.")
+
+
 def calibrate(
     agent: str = "claude",
     transcript_path: Path | None = None,
@@ -857,3 +929,6 @@ def calibrate(
         for sec, div in diversity_metrics.items():
             status = "OVERFIT WARNING" if div["overfit_warning"] else "ok"
             print(f"Diversity [{sec}]:     {div['category_count']} categories, {div['transcript_count']} transcripts ({status})")
+
+    # Suggest section skills for persistently low-scoring or high-churn sections
+    _suggest_section_skills(repo_root, agg_scores, train_transcripts)
