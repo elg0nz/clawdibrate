@@ -11,6 +11,16 @@
       "sourceType": "local",
       "computedHash": "2caa2ccc755e5dfcd9a7025ffbb94d37784a4a28821ad4df5860593989d70e43"
     },
+    "clawdbrt:bootstrap-transcript-calibrator": {
+      "source": "/Users/gonz/Code/clawdibrate/src/skills",
+      "sourceType": "local",
+      "computedHash": "7f0ecd03df9009e9c23e2217d9fda7da1c68fa052b1ce26742f70d27cf989efe"
+    },
+    "clawdbrt:boundaries": {
+      "source": "/Users/gonz/Code/clawdibrate/src/skills",
+      "sourceType": "local",
+      "computedHash": "b1fdabcfad0c41d065707cd1f4484f42fc95e7b4592e8bdfa3083827f0077e54"
+    },
     "clawdbrt:implement": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
@@ -21,10 +31,15 @@
       "sourceType": "local",
       "computedHash": "ee2777a8e410da41add5886e2732ea19211f44cdcca38f970dd5d0b4c32b0b9d"
     },
+    "clawdbrt:known-gotchas": {
+      "source": "/Users/gonz/Code/clawdibrate/src/skills",
+      "sourceType": "local",
+      "computedHash": "40066706a271aa2e5169c9a4978eb68c17a61e2a6a38537e1c0f847e253fdd59"
+    },
     "clawdbrt:loop": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "12136186b094df250e9ef7d561567a681ff6e6013eb8683041b0cb8305a187c1"
+      "computedHash": "f005499c5ca91ae08b358668a4c683e93f38eba64d02030a9b6bb9c882b1ea88"
     },
     "clawdbrt:record-from-git": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
@@ -50,6 +65,16 @@
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
       "computedHash": "1c5140c5545615f970e084bfb8de366fc113269004f25a42902c813ea9f0dc34"
+    },
+    "clawdbrt:setup": {
+      "source": "/Users/gonz/Code/clawdibrate/src/skills",
+      "sourceType": "local",
+      "computedHash": "219ef57d330069ac53de9bf656985c3358239b2ba3305e1bc18b8f8ccc06da38"
+    },
+    "clawdbrt:skills": {
+      "source": "/Users/gonz/Code/clawdibrate/src/skills",
+      "sourceType": "local",
+      "computedHash": "5cf6c386ad648c8315325441cfedf5c16ac4b2e9c5699b52c89745fe187baf23"
     },
     "clawdbrt:tokens": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
