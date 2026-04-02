@@ -29,7 +29,11 @@ Only detected agents are targeted — clawdibrate auto-detects installed agent C
 
 Calibration shells out to local agent CLIs (use each tool's usual login). Cursor Agent in non-interactive contexts may require `CURSOR_API_KEY`.
 
-**Agent env:** `python -m clawdibrate` loads `repo/.clawdibrate/env` when present (see `clawdibrate.env.example`); parsed keys do not override variables already in the process environment. If that file is missing and `repo/.env` exists, only keys prefixed with `CLAWDIBRATE_` are merged. Set `CLAWDIBRATE_AGENT` to pick the default calibration CLI when `--agent` is omitted (e.g. `cursor` in IDE tasks).
+**Where to set agent env (target repo root):**
+1. **Preferred:** `repo/.clawdibrate/env` — gitignored with `.clawdibrate/`. Copy `clawdibrate.env.example` to `.clawdibrate/env`, e.g. `CLAWDIBRATE_AGENT=cursor`. Every `KEY=value` line is loaded; keys already set in the process environment are not overwritten.
+2. **Fallback:** `repo/.env` — used **only if** `.clawdibrate/env` is absent; **only** `CLAWDIBRATE_*` keys are merged so unrelated secrets stay out of the run.
+
+Env loads before `--agent` is parsed — omit `--agent` to use `CLAWDIBRATE_AGENT` from the file.
 
 Built-in agents (set via `--agent`, default from `CLAWDIBRATE_AGENT` or `claude`):
 - `cursor` — `cursor agent --print --force` (headless); workers inherit full `os.environ` (`CURSOR_API_KEY`, etc.)
