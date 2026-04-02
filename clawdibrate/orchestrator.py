@@ -236,17 +236,62 @@ def extract_json(text: str):
 # AGENTS.md manipulation
 # ---------------------------------------------------------------------------
 
+def _is_git_repo(repo_root: Path) -> bool:
+    """Check if repo_root is inside a git repository."""
+    try:
+        subprocess.run(
+            ["git", "-C", str(repo_root), "rev-parse", "--git-dir"],
+            check=True, capture_output=True,
+        )
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+
+def _is_tracked(repo_root: Path, rel_path: str) -> bool:
+    """Check if a file is tracked by git."""
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(repo_root), "ls-files", "--error-unmatch", rel_path],
+            check=True, capture_output=True,
+        )
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+
 def resolve_repo_root(repo_root: Path | None = None) -> Path:
-    """Resolve the target repo root that contains an instruction file."""
+    """Resolve the target repo root that contains an instruction file.
+
+    Validates:
+    1. An instruction file exists (AGENTS.md, CLAUDE.md, etc.)
+    2. The directory is a git repo (clawdibrate uses git for versioning)
+    3. The instruction file is tracked by git
+    """
     if repo_root is None:
         repo_root = Path.cwd()
     repo_root = repo_root.resolve()
+
+    if not _is_git_repo(repo_root):
+        raise RuntimeError(
+            f"{repo_root} is not a git repository. "
+            "Clawdibrate uses git to track instruction file changes — initialize git first."
+        )
+
     detected = detect_instruction_file(repo_root)
     if not detected:
         raise FileNotFoundError(
             f"No AGENTS.md or CLAUDE.md found in {repo_root}. "
             "Create one with the clawdibrate bootstrap line first."
         )
+
+    active_rel = detected["active"]["relative_path"]
+    if not _is_tracked(repo_root, active_rel):
+        raise RuntimeError(
+            f"{active_rel} is not tracked by git. "
+            f"Run `git add {active_rel}` and commit before calibrating."
+        )
+
     return repo_root
 
 
@@ -285,18 +330,6 @@ def replace_section(content: str, section_name: str, new_content: str) -> str:
         flags=re.DOTALL,
     )
 
-
-def save_versioned_instruction_file(instruction_path: Path, content: str):
-    """Save NAME_vN.md before overwriting the active instruction file."""
-    repo_root = instruction_path.parent
-    stem = instruction_path.stem
-    suffix = instruction_path.suffix
-    existing = sorted(
-        repo_root.glob(f"{stem}_v*{suffix}"),
-        key=lambda p: int(p.stem.replace(f"{stem}_v", "") or 0),
-    )
-    n = (int(existing[-1].stem.replace(f"{stem}_v", "")) + 1) if existing else 1
-    (repo_root / f"{stem}_v{n}{suffix}").write_text(content)
 
 
 # ---------------------------------------------------------------------------
@@ -514,11 +547,22 @@ def calibrate(
         else:
             print(f"  ⚠ {section}: implementer returned empty content, skipping")
 
-    # Persist
+    # Persist — write and commit via git (no _vN.md copies)
     if updated_agents_md != agents_md:
-        save_versioned_instruction_file(instruction_path, agents_md)
         instruction_path.write_text(updated_agents_md)
-        print(f"\n✓ {instruction_path.name} updated")
+        try:
+            subprocess.run(
+                ["git", "-C", str(repo_root), "add", str(instruction_path)],
+                check=True, capture_output=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(repo_root), "commit", "-m",
+                 f"clawdibrate: calibrate {instruction_path.name}"],
+                check=True, capture_output=True,
+            )
+            print(f"\n✓ {instruction_path.name} updated and committed")
+        except subprocess.CalledProcessError as exc:
+            print(f"\n✓ {instruction_path.name} updated (git commit failed: {exc})")
 
     # Compute and log aggregate section scores
     agg_scores = {s: round(sum(scores) / len(scores), 3) for s, scores in section_scores.items()}
