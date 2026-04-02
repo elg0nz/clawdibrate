@@ -1,6 +1,6 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.9.4** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.9.5** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **PATCH** = backward-compatible fixes (wording, tuning). **MINOR** = new backward-compatible functionality (new sections, commands, skills). **MAJOR** = incompatible changes to the calibration loop contract or CLI interface.
 
@@ -71,29 +71,21 @@ Slash commands route to `SKILL.md` files in `src/skills/`. All skills use `clawd
 
 ## Bootstrap Transcript Calibrator
 
-The canonical implementation is transcript-based. Architecture:
+Transcript-based architecture: `transcript → metrics → bug-identifier → judge → implementer → section-scoped edits → new AGENTS.md`
 
-```
-transcript → deterministic metrics → bug-identifier → judge → implementer →
-section-scoped edits → new AGENTS.md
-```
+**Version specs:** Latest `docs/vX_Y_Z/specs/` first, fallback to older only if missing. Reference: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orchestrator.py`
 
-**Always check the latest version directory first** for specs and reference implementations:
-1. Latest `docs/vX_Y_Z/specs/` (sort directories, pick highest version)
-2. Fall back to older `docs/vX_Y_Z/specs/` only if the file doesn't exist in the latest version
+**Before analysis:** Verify transcript completeness. Request complete data if truncated.
 
-Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orchestrator.py`
+**Boundary:** AGENTS.md injected as system prompt — NEVER use Read with offset/limit on AGENTS.md.
 
-**Before analyzing:** Verify transcript completeness. If truncated or incomplete, request complete transcript data rather than proceeding with partial analysis.
-
-**Boundary:** AGENTS.md is injected as system prompt context — NEVER use Read with offset/limit parameters on AGENTS.md.
-
-**Critical Rules:**
-- Auto-detect high-churn sections (≥3 edits) and flag them for review before making changes
-- Read large files once fully (no `offset`/`limit`) — chunking wastes 4x the calls and tokens
-- For reading multiple related files (>3), use a single agent with batch instructions or parallel tool calls in one message
-- Either delegate exploration to agents OR read files directly — never both for the same files
-- When editing AGENTS.md sections, verify current content first for accuracy
+**Rules:**
+- Auto-detect high-churn sections (≥3 edits), flag before changes
+- Read large files once fully (no offset/limit) — chunking wastes 4x calls/tokens  
+- Multiple files (>3): single agent with batch instructions OR parallel tool calls
+- Either delegate exploration OR read directly — never both for same files
+- Verify current content before editing AGENTS.md sections
+- Output complete, valid JSON with all required fields
 
 
 ## Tuning Rules
