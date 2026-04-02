@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -13,11 +14,14 @@ DEFAULT_INSTRUCTION_FILES = (
 )
 
 BOOTSTRAP_LINE = (
-    "Use clawdibrate. If you don't have it available, git clone "
-    "https://github.com/elg0nz/clawdibrate and run setup."
+    "This repo uses [clawdibrate](https://github.com/elg0nz/clawdibrate) to auto-improve its instruction files. "
+    "Install: `pip install git+https://github.com/elg0nz/clawdibrate.git` — "
+    "Run: `python -m clawdibrate --setup --repo .`"
 )
 INSTALLED_LINE = (
-    "This repo uses clawdibrate to auto-improve its AGENTS.md or CLAUDE.md."
+    "This repo uses [clawdibrate](https://github.com/elg0nz/clawdibrate) to auto-improve its instruction files. "
+    "Install: `pip install git+https://github.com/elg0nz/clawdibrate.git` — "
+    "Run: `python -m clawdibrate --help` for commands."
 )
 
 
@@ -79,6 +83,37 @@ def _replace_or_prepend_line(content: str, line: str, old_lines: tuple[str, ...]
     return line + "\n"
 
 
+def _bundled_skills_path() -> Path:
+    """Return the path to bundled skills shipped inside the clawdibrate package."""
+    return Path(__file__).parent / "skills"
+
+
+def _install_bundled_skills(repo_root: Path) -> bool:
+    """Install bundled clawdibrate skills into the target repo via npx skills add."""
+    skills_dir = _bundled_skills_path()
+    if not skills_dir.is_dir() or not any(skills_dir.iterdir()):
+        return False
+
+    npx = shutil.which("npx")
+    if npx is None:
+        print("Warning: npx not found — skipping skills install. Run manually:")
+        print(f"  cd {repo_root} && npx skills add {skills_dir} --all -y")
+        return False
+
+    try:
+        subprocess.run(
+            [npx, "skills", "add", str(skills_dir), "--all", "-y"],
+            cwd=str(repo_root),
+            check=True,
+            timeout=60,
+        )
+        return True
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        print(f"Warning: skills install failed ({exc}). Run manually:")
+        print(f"  cd {repo_root} && npx skills add {skills_dir} --all -y")
+        return False
+
+
 def ensure_clawdibrate_setup(repo_root: Path) -> dict:
     detected = detect_instruction_file(repo_root)
     if not detected:
@@ -115,8 +150,12 @@ def ensure_clawdibrate_setup(repo_root: Path) -> dict:
             counterpart_path.write_text(pointer)
             created_pointer = counterpart_path
 
+    # Install bundled skills into the target repo via `npx skills add`
+    skills_installed = _install_bundled_skills(repo_root)
+
     return {
         "active_path": active_path,
         "created_pointer": created_pointer,
         "candidates": detected["candidates"],
+        "skills_installed": skills_installed,
     }

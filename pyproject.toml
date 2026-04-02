@@ -23,4 +23,4 @@ include-package-data = true
 include = ["clawdibrate*"]
 
 [tool.setuptools.package-data]
-clawdibrate = ["prompts/*.md"]
+clawdibrate = ["prompts/*.md", "skills/*/SKILL.md"]

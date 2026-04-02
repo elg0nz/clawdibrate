@@ -74,6 +74,8 @@ def main():
         print(f"Active instruction file: {result['active_path']}")
         if result["created_pointer"]:
             print(f"Created pointer file: {result['created_pointer']}")
+        if result.get("skills_installed"):
+            print("Skills installed: record-start, record-stop, record-from-git, loop")
         return
 
     if args.synthesize_git_history:
