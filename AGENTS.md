@@ -29,6 +29,7 @@ Calibration shells out to local agent CLIs (use each tool's usual login). Cursor
 **Agent env:** `python -m clawdibrate` loads `repo/.clawdibrate/env` when present (see `clawdibrate.env.example`); parsed keys do not override variables already in the process environment. If that file is missing and `repo/.env` exists, only keys prefixed with `CLAWDIBRATE_` are merged. Set `CLAWDIBRATE_AGENT` to pick the default calibration CLI when `--agent` is omitted (e.g. `cursor` in IDE tasks).
 
 Built-in agents (set via `--agent`, default from `CLAWDIBRATE_AGENT` or `claude`):
+- `cursor` — `cursor agent --print --force` (headless); workers inherit full `os.environ` (`CURSOR_API_KEY`, etc.)
 - `claude` — `claude -p "{prompt}" --dangerously-skip-permissions`
 - `codex` — `codex exec --full-auto "{prompt}"`
 - `opencode` — `opencode --prompt "{prompt}"`
@@ -49,7 +50,9 @@ Runtime: Python 3.10+ for `python -m clawdibrate`. Node.js (see `.tool-versions`
 
 ```bash
 python -m clawdibrate                              # calibrate from recorded transcripts
+python -m clawdibrate --agent cursor               # Cursor Agent CLI (or use .clawdibrate/env)
 python -m clawdibrate --agent codex                # use codex as the calibration agent
+python -m clawdibrate --no-auto-section-skills     # calibrate only; do not auto-create section skills / npx
 python -m clawdibrate --transcript path/to.jsonl   # calibrate from one transcript
 python -m clawdibrate --dry-run                    # inspect the run without editing AGENTS.md
 ```
