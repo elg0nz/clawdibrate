@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 for tracking AGENTS.md versions.
 
+## [0.10.0] - 2026-04-02
+
+### Added
+- **40-test pytest suite** — mocked agent calls, covers all `calibrate()` branches: early exits, 3-stage pipeline (bug-id, judge, implementer), persistence, convergence, overfit detection, compression, max_transcripts cap, version bump, section ops
+- **`scripts/presubmit.sh`** — quality gate: ruff, mypy --strict, bandit, vulture, radon, inline imports
+- **`/clawdbrt:presubmit` skill** — wraps the presubmit script for any agent
+- **`--scores` flag** — ASCII sparkline of calibration score history from `scores.jsonl`
+- **`--check-idempotent` flag** — runs calibrate twice on the same transcript, asserts convergence (exit 0 = idempotent, 1 = divergence)
+- **End-to-end smoke test** — `docs/v0_10_0/SMOKE_TEST.md` with synthetic repo, 6 transcripts, all modes, scoreboard
+
+### Changed
+- **`calibrate()` complexity F → D** — extracted 6 stage functions: `_discover_transcripts`, `_compute_baselines`, `_run_stage_bug_id`, `_run_stage_judge`, `_run_stage_impl`, `_persist_and_report`
+
+### Fixed
+- **70 mypy --strict errors** across 8 source files (generic type params, return annotations, TypedDicts)
+- **8 ruff issues** (unused imports, unused vars, bare f-strings)
+- **4 bandit issues** (`tempfile.mkstemp` instead of hardcoded `/tmp`, `nosec` on intentional `shell=True`)
+
 ## [0.9.0] - 2026-04-02
 
 ### Added

@@ -1,6 +1,6 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.9.8** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.10.0** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **PATCH** = backward-compatible fixes (wording, tuning). **MINOR** = new backward-compatible functionality (new sections, commands, skills). **MAJOR** = incompatible changes to the calibration loop contract or CLI interface.
 
@@ -45,6 +45,9 @@ python -m clawdibrate --mode max --target-score 0.9 # iterate until optimized / 
 python -m clawdibrate --no-auto-section-skills     # calibrate only; do not auto-create section skills / npx
 python -m clawdibrate --transcript path/to.jsonl   # calibrate from one transcript
 python -m clawdibrate --dry-run                    # inspect the run without editing AGENTS.md
+python -m clawdibrate --scores                     # print score history + ASCII sparkline
+python -m clawdibrate --check-idempotent --transcript path/to.jsonl  # convergence assertion
+python -m clawdibrate --token-budget 5000          # hard cap on file tokens
 ```
 
 ---
