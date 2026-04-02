@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 for tracking AGENTS.md versions.
 
+## [0.12.0] - 2026-04-02
+
+### Added
+- **Bootstrap mode** — calibration loop now grows AGENTS.md from scratch when no sections exist; bug-identifier proposes meaningful section names instead of `"unknown"`; orchestrator appends new sections rather than dropping unmapped failures
+- **Judge hardened on skill bypass** — skill invocation failures now always classified as `boundary_violation`, `fixability: high`, regardless of output correctness
+
 ## [0.11.0] - 2026-04-02
 
 ### Changed

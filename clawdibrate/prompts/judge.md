@@ -79,5 +79,6 @@ Higher weight = more token waste, more actionable failure worth fixing. Lower we
 - Score `is_agents_md_failure` and `fixability` based only on: did the failure waste tokens, and can AGENTS.md fix it?
 - When uncertain about fixability, err toward `low` (avoid AGENTS.md bloat)
 - Compute `weight` mechanically from the formula above — do not use intuition for this field
+- **Skill bypass is always `boundary_violation`, `fixability: high`.** If the transcript shows the agent reimplemented logic that a named skill covers (e.g. ran calibration steps manually instead of invoking `/clawdbrt:loop`, wrote kanban cards by hand instead of `/clawdbrt:kanban`), mark `is_agents_md_failure: true`, `fixability: high`. Do NOT give a pass because the output was correct — skipping the skill wastes tokens and bypasses conventions. Low-effort / fast-mode models skip skills more often; this makes the failure *more* worth fixing, not less.
 
 Output ONLY the JSON object. No explanation, no preamble.

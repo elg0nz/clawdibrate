@@ -17,6 +17,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1267,6 +1268,45 @@ def _run_stage_impl(
 
             updated_agents_md = candidate
             print(f"  ✏ {section}: updated")
+
+    # Bootstrap path: create new sections for failures whose section doesn't exist yet
+    new_sections: dict[str, list[dict[str, Any]]] = {}
+    for f in all_failures:
+        section = f.get("responsible_section", "unknown")
+        if section != "unknown" and extract_section(updated_agents_md, section) == "":
+            new_sections.setdefault(section, []).append(f)
+
+    for section, failures in new_sections.items():
+        print(f"[bootstrap] creating new section '{section}'")
+        bootstrap_prompt = (
+            f"You are creating a new AGENTS.md section called '{section}'. "
+            f"Based on the failures below, write a concise section body (under 100 words, bullets preferred) "
+            f"that would prevent these failures. Output only the section body, no heading, no preamble.\n\n"
+            f"Failures:\n{json.dumps(failures, indent=2)}"
+        )
+        bootstrap_system = (
+            "You are a concise technical writer for agent system prompts. "
+            "Follow instructions exactly. Output only what is asked."
+        )
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as _tf:
+            _tf.write(bootstrap_system)
+            _bootstrap_sp = Path(_tf.name)
+        try:
+            raw = run_agent(agent, _bootstrap_sp, bootstrap_prompt, model=model)
+        finally:
+            _bootstrap_sp.unlink(missing_ok=True)
+        new_content = strip_prompt_artifacts(raw)
+        if not new_content:
+            print(f"  ⚠ [bootstrap] {section}: agent returned empty content, skipping")
+            continue
+        leaks = validate_no_prompt_leaks(new_content)
+        if leaks:
+            print(f"  ⚠ [bootstrap] {section}: prompt leak detected, rejecting")
+            for leak in leaks:
+                print(f"    leak pattern: {leak}")
+            continue
+        updated_agents_md = updated_agents_md + f"\n\n## {section}\n\n{new_content}"
+        print(f"  ✏ [bootstrap] {section}: appended new section")
 
     # Compression pass: if the file grew past the pre-run baseline, shrink largest sections first
     post_impl_tokens = count_tokens(updated_agents_md)

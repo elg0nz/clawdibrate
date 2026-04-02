@@ -63,7 +63,7 @@ Output a JSON array. Each item must have exactly these fields:
 ]
 ```
 
-If `responsible_section` cannot be mapped to an existing AGENTS.md section, use `"unknown"`.
+If `responsible_section` cannot be mapped to an existing AGENTS.md section, propose a concise, meaningful section name (e.g., `"CLI Usage"`, `"FTS Commands"`, `"Workflow"`) that would contain the fix. Only use `"unknown"` if you truly cannot determine any sensible section name.
 
 If no failures are found, output `[]`.
 
