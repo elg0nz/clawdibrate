@@ -1,6 +1,6 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.9.6** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.9.7** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **PATCH** = backward-compatible fixes (wording, tuning). **MINOR** = new backward-compatible functionality (new sections, commands, skills). **MAJOR** = incompatible changes to the calibration loop contract or CLI interface.
 
@@ -74,6 +74,7 @@ Transcript-based architecture: `transcript → metrics → bug-identifier → ju
 - Multiple files (>3): single agent with batch instructions OR parallel tool calls
 - Either delegate exploration OR read directly — never both for same files
 - Verify current content before editing AGENTS.md sections
+- Never output shell commands as markdown code blocks — always use Shell tool
 - Output complete, valid JSON with all required fields
 
 
@@ -91,7 +92,7 @@ Transcript-based architecture: `transcript → metrics → bug-identifier → ju
 
 ## Boundaries
 
-- Use latest `docs/vX_Y_Z/` first, fallback to older
+- Use latest `docs/vX_Y_Z/`, fallback to older
 - Inject AGENTS.md as system prompt for calibration
 - Save `.clawdibrate/iterations/AGENTS_vN.md` before overwrite
 - Track `reflection_history` across iterations
@@ -111,13 +112,13 @@ Transcript-based architecture: `transcript → metrics → bug-identifier → ju
 
 ## Known Gotchas
 
-- **JSON parse failures in judge**: `try/except` → regex `\{.*\}` fallback (`re.DOTALL`)
-- **Claude flag**: use `-p` for non-interactive prompt mode, not bare positional arg
-- **Claude resume**: `claude --continue` to resume, not a fresh invocation
-- **Subprocess timeout**: agent CLIs can hang — enforce `timeout=120` in `subprocess.run()`
-- **Score plateaus**: if avg_score stalls across multiple transcript runs, capture harder sessions before rewriting more sections
-- **Regression trap**: if a passing task starts failing, check `reflection_history` before rewriting
-- **Claude Code session format**: JSONL at `~/.claude/projects/<mangled-cwd>/` (path `/` → `-`). Structure: `{"type":"user"|"assistant","message":{"content":[{"type":"text","text":"..."}|{"type":"tool_use","id":"...","name":"...","input":{...}}|{"type":"tool_result","tool_use_id":"...","content":"..."}]}}`. Parse message types and content blocks directly; avoid exploratory reverse-engineering.
+- **JSON parse failures**: `try/except` → regex `\{.*\}` fallback (`re.DOTALL`)
+- **Claude flag**: use `-p` for prompts, not bare args
+- **Claude resume**: `claude --continue`, not fresh invocation
+- **Subprocess timeout**: enforce `timeout=120` in `subprocess.run()`
+- **Score plateaus**: capture harder sessions before rewriting sections
+- **Regression trap**: check `reflection_history` before rewriting failing tasks
+- **Claude Code format**: JSONL at `~/.claude/projects/<mangled-cwd>/` (`/` → `-`). Parse message types/content blocks directly
 
 
 ## Score Tracking
