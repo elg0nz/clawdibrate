@@ -485,10 +485,22 @@ def save_reflection(history_dir: Path, entry: dict):
         f.write(json.dumps(entry) + "\n")
 
 
-def save_score(history_dir: Path, entry: dict):
+def _central_scoreboard_path(repo_root: Path) -> Path:
+    """~/.clawdibrate/scoreboards/<repo-slug>.jsonl for cross-repo score tracking."""
+    slug = str(repo_root.resolve()).replace("/", "-").lstrip("-")
+    board_dir = Path.home() / ".clawdibrate" / "scoreboards"
+    board_dir.mkdir(parents=True, exist_ok=True)
+    return board_dir / f"{slug}.jsonl"
+
+
+def save_score(history_dir: Path, entry: dict, repo_root: Path | None = None):
     history_dir.mkdir(parents=True, exist_ok=True)
     with open(history_dir / "scores.jsonl", "a") as f:
         f.write(json.dumps(entry) + "\n")
+    if repo_root is not None:
+        board_path = _central_scoreboard_path(repo_root)
+        with open(board_path, "a") as f:
+            f.write(json.dumps({"repo": str(repo_root.resolve()), **entry}) + "\n")
 
 
 def load_baselines(history_dir: Path) -> dict:
@@ -832,6 +844,7 @@ def calibrate(
             "test_avg": test_avg,
             "split": {"train": len(train_transcripts), "test": len(test_transcripts)},
         },
+        repo_root=repo_root,
     )
 
     print(f"\nCalibration complete | avg={avg} | failures={len(all_failures)} | sections={agg_scores}")

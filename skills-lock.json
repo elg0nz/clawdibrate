@@ -9,7 +9,7 @@
     "clawdbrt:add-new-features": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "3427ea78cf6c83ae411f44e3d6b6a6707a60b1d94252e9261610aa351077fb4c"
+      "computedHash": "2caa2ccc755e5dfcd9a7025ffbb94d37784a4a28821ad4df5860593989d70e43"
     },
     "clawdbrt:implement": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
@@ -45,6 +45,11 @@
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
       "computedHash": "2d04f17e97158fdc0ff420eb46a64bb4dff2e2ccb4d1d286972f4a746c1209f3"
+    },
+    "clawdbrt:scores": {
+      "source": "/Users/gonz/Code/clawdibrate/src/skills",
+      "sourceType": "local",
+      "computedHash": "1c5140c5545615f970e084bfb8de366fc113269004f25a42902c813ea9f0dc34"
     },
     "deploy-to-vercel": {
       "source": "vercel-labs/agent-skills",
