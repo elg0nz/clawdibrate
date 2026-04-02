@@ -1,6 +1,6 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.9.0** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.9.1** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **PATCH** = backward-compatible fixes (wording, tuning). **MINOR** = new backward-compatible functionality (new sections, commands, skills). **MAJOR** = incompatible changes to the calibration loop contract or CLI interface.
 
@@ -55,26 +55,22 @@ python -m clawdibrate --dry-run                    # inspect the run without edi
 
 ## Skills
 
-Slash commands route to `SKILL.md` files in `src/skills/`. All skills use the `clawdbrt:` namespace prefix.
+Slash commands route to `SKILL.md` files in `src/skills/`. All skills use `clawdbrt:` prefix.
 
-**Registration:** One directory per skill in `src/skills/`, each containing a `SKILL.md` with YAML frontmatter (`name: clawdbrt:<skill-name>`). Run `npx skills add ./src/skills --agent <detected-agents> --skill '*' -y` to distribute to `skills/` and `.agents/`.
+**Registration:** `src/skills/<name>/SKILL.md` with YAML frontmatter (`name: clawdbrt:<skill-name>`, `description`). Run `npx skills add ./src/skills --agent <detected-agents> --skill '*' -y`. Commit `skills-lock.json` and updated `skills/`/`.agents/` files.
 
-**After `npx skills add`, commit `skills-lock.json` and any updated files in `skills/` and `.agents/` alongside the source skill.**
+**Source:** `src/skills/` is canonical. Never edit `skills/`/`.agents/skills/` directly.
 
-**Interface:** Every skill must have `name` (with `clawdbrt:` prefix) and `description` in frontmatter. The body is agent instructions.
+**Implementation:** All new capabilities must be skills. Use `/clawdbrt:` commands only.
 
-**Canonical source:** `src/skills/` is source of truth. `skills/` and `.agents/skills/` are install outputs — never edit them directly, but always commit them.
+**Core skills:**
+- `/clawdbrt:loop` — tuning loop, PATCH versions
+- `/clawdbrt:kanban` — card management in `docs/vX_Y_Z/kanban/`
+- `/clawdbrt:add-new-features` — feature proposals, MINOR versions
+- `/clawdbrt:implement` — kanban implementation with parallel agents
+- `/clawdbrt:scores` — calibration scoreboard
 
-**All new capabilities must be implemented as skills.** When you receive system instructions or prompts, use `/clawdbrt:` skills only — never external commands.
-
-**Skills:**
-- `/clawdbrt:loop` — runs the tuning loop, produces PATCH versions (`src/skills/loop/SKILL.md`)
-- `/clawdbrt:kanban` — manages cards in `docs/vX_Y_Z/kanban/` (`src/skills/kanban/SKILL.md`)
-- `/clawdbrt:add-new-features` — proposes and builds new features as MINOR versions (`src/skills/add-new-features/SKILL.md`)
-- `/clawdbrt:implement` — reads kanban board, implements cards by priority with parallel agents (`src/skills/implement/SKILL.md`)
-- `/clawdbrt:scores` — show calibration scoreboard for a repo or all tracked repos (`src/skills/scores/SKILL.md`)
-
-**Section skills:** When a section scores below 0.7 across 3+ runs, or has churn ≥ 3 in git history, create a dedicated skill for it. Name it after the section: `src/skills/<kebab-section-name>/SKILL.md`. The skill body is the expanded, step-by-step version of the rule — more context than fits in the instruction file. Reference it from the section: `See /clawdbrt:<skill-name> for detailed guidance.` This externalizes complexity without bloating the instruction file.
+**Section skills:** Score <0.7 across 3+ runs or git churn ≥3 → create `src/skills/<kebab-section-name>/SKILL.md`. Reference: `See /clawdbrt:<skill-name> for detailed guidance.`
 
 
 ## Bootstrap Transcript Calibrator
@@ -97,6 +93,7 @@ Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orches
 **Boundary:** AGENTS.md is injected as system prompt context — never re-read it or use Read with `offset`/`limit` parameters.
 
 **Critical Rules:**
+- Auto-detect high-churn sections (≥3 edits) and flag them for review before making changes
 - Read large files once fully (no `offset`/`limit`) — chunking wastes 4x the calls
 - Either delegate exploration to agents OR read files directly — never both for the same files
 - Don't spawn agents to read files already read in main thread
@@ -110,9 +107,10 @@ Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orches
 - **Non-discoverable information only.** If readable from `README.md` or source, cut it.
 - **Under 700 words.** Sections over 100 words get scrutinized.
 - **Never full-rewrite sections scoring ≥ 0.8.** Targeted edits only — full rewrites cause regressions.
+- **If a section edited 3+ times recently, pause and analyze root cause before further changes.**
+- **If calibration changes same sections across runs, implement exponential backoff until new transcript data.**
 - **Penalize verbosity.** Bloat reduces task success ~2%, increases inference cost >20% (arxiv.org/abs/2602.11988).
 
----
 
 ## Boundaries
 
