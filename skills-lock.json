@@ -31,15 +31,20 @@
       "sourceType": "local",
       "computedHash": "41dcde8b1ccb0c3e27bcb8e56629ca19364a013cf4a01256a21f7ca8b5639c2c"
     },
+    "clawdbrt:record-session": {
+      "source": "/Users/gonz/Code/clawdibrate/src/skills",
+      "sourceType": "local",
+      "computedHash": "36c9a1948047d1b1ea4392d4c829d02ba3a76dc88f6dc244cbbd5f3de54ee0d1"
+    },
     "clawdbrt:record-start": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "b0b117ee8cee334480b2263a1a740d5dd072c7b87e02053f4e1dbd82f0888e4b"
+      "computedHash": "93ab57fbc55ee32f11f70ef712273a27f738878b53f31dd3e723bb0477890153"
     },
     "clawdbrt:record-stop": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "7786795b153d1539734fb27f8e6fbf7f687d94c3f7eb14b66eef59abed275127"
+      "computedHash": "2d04f17e97158fdc0ff420eb46a64bb4dff2e2ccb4d1d286972f4a746c1209f3"
     },
     "deploy-to-vercel": {
       "source": "vercel-labs/agent-skills",
