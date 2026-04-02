@@ -8,6 +8,7 @@ from .git_history import synthesize_transcript_from_git
 from .instruction_files import (
     ensure_clawdibrate_setup,
 )
+from .compress import run_compress_advisor
 from .orchestrator import calibrate
 from .session_dump import dump_session
 
@@ -85,6 +86,23 @@ def main():
         help="Maximum number of transcripts to process per calibration run (default: all)",
     )
     parser.add_argument(
+        "--token-budget",
+        type=int,
+        default=None,
+        help="Max token count for instruction file (default: None = current file size)",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=4,
+        help="Number of parallel workers (default: 4, 1 = sequential)",
+    )
+    parser.add_argument(
+        "--model",
+        default="haiku",
+        help="Model for parallel workers (default: haiku)",
+    )
+    parser.add_argument(
         "--dump-session",
         action="store_true",
         help="Convert the most recent Claude Code session into a clawdibrate transcript",
@@ -93,6 +111,11 @@ def main():
         "--session-id",
         default=None,
         help="Specific Claude Code session UUID to dump (default: most recent)",
+    )
+    parser.add_argument(
+        "--compress",
+        action="store_true",
+        help="Run compression advisor on the instruction file and print suggestions",
     )
 
     args = parser.parse_args()
@@ -120,6 +143,13 @@ def main():
         print(output)
         return
 
+    if args.compress:
+        from .instruction_files import detect_instruction_file
+        repo_root = (args.repo or Path.cwd()).resolve()
+        instruction_path = detect_instruction_file(repo_root)
+        run_compress_advisor(instruction_path)
+        return
+
     if args.synthesize_git_history:
         repo_root = (args.repo or Path.cwd()).resolve()
         output = synthesize_transcript_from_git(
@@ -139,6 +169,9 @@ def main():
         holdout_ratio=args.holdout_ratio,
         staleness_halflife_days=args.staleness_halflife_days,
         max_transcripts=args.max_transcripts,
+        token_budget=args.token_budget,
+        workers=args.workers,
+        model=args.model,
     )
 
 

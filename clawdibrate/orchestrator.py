@@ -20,6 +20,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .instruction_files import detect_instruction_file
+from .tokens import count_tokens, count_file_tokens, count_section_tokens
+from .ralph import fan_out
 
 # Force unbuffered stdout so progress prints appear immediately in parent processes
 if hasattr(sys.stdout, "reconfigure"):
@@ -553,19 +555,29 @@ def _suggest_section_skills(
     transcripts: list[Path],
     score_threshold: float = 0.7,
     churn_threshold: int = 3,
+    token_threshold: int = 200,
 ) -> None:
-    """Print suggestions to create section skills for low-scoring or high-churn sections.
+    """Print suggestions to create section skills for low-scoring, high-churn, or large sections.
 
     Triggers when:
     - A section scores below score_threshold, OR
-    - A section has git churn >= churn_threshold in any transcript's session_start event
+    - A section has git churn >= churn_threshold in any transcript's session_start event, OR
+    - A section exceeds token_threshold tokens
 
     Skips sections that already have a skill in src/skills/.
     Also checks whether the instruction file already contains the 'See /clawdbrt:' pointer.
+    Suggestions are ranked by estimated token savings (highest first).
     """
+    POINTER_TOKENS = 15
+
     skills_src = repo_root / "src" / "skills"
     instruction_path = repo_paths(repo_root)["instruction_file"]
     instruction_content = instruction_path.read_text() if instruction_path.exists() else ""
+
+    # Count tokens per section in instruction file
+    section_tokens: dict[str, int] = {}
+    if instruction_content:
+        section_tokens = count_section_tokens(instruction_content)
 
     # Gather churn data from git-history transcripts
     section_churn: dict[str, int] = {}
@@ -580,13 +592,19 @@ def _suggest_section_skills(
             pass
 
     suggestions = []
-    candidates = set(agg_scores) | {s for s, c in section_churn.items() if c >= churn_threshold}
+    candidates = (
+        set(agg_scores)
+        | {s for s, c in section_churn.items() if c >= churn_threshold}
+        | {s for s, t in section_tokens.items() if t >= token_threshold}
+    )
     for section in candidates:
         score = agg_scores.get(section)
         churn = section_churn.get(section, 0)
+        tokens = section_tokens.get(section, 0)
         low_score = score is not None and score < score_threshold
         high_churn = churn >= churn_threshold
-        if not (low_score or high_churn):
+        large_section = tokens >= token_threshold
+        if not (low_score or high_churn or large_section):
             continue
 
         skill_name = _section_to_skill_name(section)
@@ -598,19 +616,25 @@ def _suggest_section_skills(
         if pointer in instruction_content:
             continue  # already referenced
 
+        savings = max(tokens - POINTER_TOKENS, 0)
+
         reason = []
         if low_score:
             reason.append(f"score={score:.2f}")
         if high_churn:
             reason.append(f"churn={churn}")
-        suggestions.append((section, skill_name, ", ".join(reason)))
+        reason.append(f"tokens={tokens}")
+        suggestions.append((section, skill_name, ", ".join(reason), savings))
+
+    # Rank by token savings, highest first
+    suggestions.sort(key=lambda s: s[3], reverse=True)
 
     if suggestions:
         print("\n💡 Section skill suggestions (create these to externalize tricky rules):")
-        for section, skill_name, reason in suggestions:
+        for section, skill_name, reason, savings in suggestions:
             print(f"  [{reason}] '{section}'")
             print(f"    → create src/skills/{skill_name}/SKILL.md")
-            print(f"    → add to section: See /clawdbrt:{skill_name} for detailed guidance.")
+            print(f"    → estimated savings: ~{savings} tokens (replace with 1-line pointer)")
 
 
 def calibrate(
@@ -621,6 +645,9 @@ def calibrate(
     holdout_ratio: float = 0.2,
     staleness_halflife_days: float = 30.0,
     max_transcripts: int | None = None,
+    token_budget: int | None = None,
+    workers: int = 4,
+    model: str = "haiku",
 ):
     """Run one calibration pass: identify → judge → implement → persist."""
     repo_root = resolve_repo_root(repo_root)
@@ -630,6 +657,13 @@ def calibrate(
     history_dir = paths["history_dir"]
 
     agents_md = read_instruction_file(instruction_path)
+
+    # Token tracking: measure before
+    tokens_before = count_file_tokens(instruction_path)
+    if token_budget is None:
+        token_budget = tokens_before["total"]
+    budget_90 = int(token_budget * 0.9)
+    print(f"\nTokens before: {tokens_before['total']:,} | budget: {token_budget:,}")
     reflections = load_reflections(history_dir)
 
     # Discover transcripts
@@ -661,18 +695,18 @@ def calibrate(
     baselines = load_baselines(history_dir)
     all_deltas: list[dict] = []
 
+    # Pre-compute metrics and baselines for all transcripts
+    transcript_data: list[dict] = []
     for t_path in train_transcripts:
         print(f"\n→ Processing transcript: {t_path.name}")
         transcript = [json.loads(line) for line in t_path.read_text().splitlines() if line.strip()]
         metrics = compute_metrics(transcript)
         print(f"  metrics: {metrics}")
 
-        # Card 005: staleness decay — weight by recency
         recency_weight = compute_recency_weight(t_path, staleness_halflife_days)
         if recency_weight < 1.0:
             print(f"  recency weight: {recency_weight:.3f}")
 
-        # Baseline: record deterministic metrics from first run as empty-context baseline
         transcript_key = str(t_path)
         if transcript_key not in baselines:
             baseline_entry = {
@@ -690,59 +724,106 @@ def calibrate(
         all_deltas.append(delta)
         print(f"  delta-over-baseline: {delta}")
 
-        # Stage 1: Bug identification
-        prompt = (
-            f"Instruction file ({instruction_path.name}):\n```\n{agents_md}\n```\n\n"
-            f"Transcript:\n```\n{t_path.read_text()}\n```\n\n"
-            f"Deterministic metrics: {json.dumps(metrics)}\n\n"
-            f"Baseline metrics (empty-context): {json.dumps(baseline_metrics)}\n\n"
-            f"Delta over baseline: {json.dumps(delta)}"
-        )
-        if dry_run:
-            print(f"  [dry-run] would invoke bug-identifier on {t_path.name}")
-            continue
+        transcript_data.append({
+            "t_path": t_path,
+            "metrics": metrics,
+            "baseline_metrics": baseline_metrics,
+            "delta": delta,
+            "recency_weight": recency_weight,
+        })
 
-        print(f"  [stage 1/3] running bug-identifier…")
-        raw = run_agent(agent, PROMPTS_DIR / "bug-identifier.md", prompt)
-        failures = extract_json(raw)
-        if not isinstance(failures, list):
-            print(f"  ⚠ bug-identifier returned non-list: {raw[:200]}")
-            failures = []
+    if dry_run:
+        for td in transcript_data:
+            print(f"  [dry-run] would invoke bug-identifier on {td['t_path'].name}")
 
-        print(f"  → {len(failures)} failure(s) identified")
+    # Stage 1: Bug identification (parallel when workers > 1)
+    if not dry_run:
+        bug_id_tasks = []
+        for i, td in enumerate(transcript_data):
+            t_path = td["t_path"]
+            prompt = (
+                f"Instruction file ({instruction_path.name}):\n```\n{agents_md}\n```\n\n"
+                f"Transcript:\n```\n{t_path.read_text()}\n```\n\n"
+                f"Deterministic metrics: {json.dumps(td['metrics'])}\n\n"
+                f"Baseline metrics (empty-context): {json.dumps(td['baseline_metrics'])}\n\n"
+                f"Delta over baseline: {json.dumps(td['delta'])}"
+            )
+            bug_id_tasks.append({
+                "id": i,
+                "prompt": prompt,
+                "system_prompt_path": str(PROMPTS_DIR / "bug-identifier.md"),
+            })
 
-        # Stage 2: Judge each failure
-        scored_failures = []
-        for failure in failures:
-            section = failure.get("responsible_section", "unknown")
-            if section == "unknown":
-                print(f"  ⚠ unmapped failure: {failure.get('failure', '?')[:80]}")
+        if workers > 1 and len(bug_id_tasks) > 1:
+            print(f"\n  [stage 1/3] running {len(bug_id_tasks)} bug-identifiers in parallel (workers={workers})…")
+            bug_results = fan_out(bug_id_tasks, workers=workers, model=model, agent=agent)
+        else:
+            print(f"\n  [stage 1/3] running bug-identifiers sequentially…")
+            bug_results = []
+            for task in bug_id_tasks:
+                raw = run_agent(agent, PROMPTS_DIR / "bug-identifier.md", task["prompt"])
+                bug_results.append({"id": task["id"], "result": raw, "error": None})
+
+        # Collect failures from bug-identification results
+        all_pending_failures: list[tuple[dict, dict]] = []  # (failure, transcript_data)
+        for br in bug_results:
+            td = transcript_data[br["id"]]
+            if br["error"]:
+                print(f"  ⚠ bug-identifier failed for {td['t_path'].name}: {br['error']}")
                 continue
+            failures = extract_json(br["result"])
+            if not isinstance(failures, list):
+                print(f"  ⚠ bug-identifier returned non-list for {td['t_path'].name}: {br['result'][:200]}")
+                continue
+            print(f"  → {td['t_path'].name}: {len(failures)} failure(s) identified")
+            for failure in failures:
+                section = failure.get("responsible_section", "unknown")
+                if section == "unknown":
+                    print(f"  ⚠ unmapped failure: {failure.get('failure', '?')[:80]}")
+                    continue
+                failure["source_transcript"] = td["t_path"].name
+                all_pending_failures.append((failure, td))
 
-            # Tag failure with source transcript for diversity tracking (card 006)
-            failure["source_transcript"] = t_path.name
-
+        # Stage 2: Judge each failure (parallel when workers > 1)
+        judge_tasks = []
+        for i, (failure, td) in enumerate(all_pending_failures):
+            section = failure["responsible_section"]
             section_content = extract_section(agents_md, section)
             judge_prompt = (
                 f"Failure: {json.dumps(failure)}\n\n"
                 f"Section '{section}':\n```\n{section_content}\n```\n\n"
-                f"Deterministic metrics: {json.dumps(metrics)}"
+                f"Deterministic metrics: {json.dumps(td['metrics'])}"
             )
-            print(f"    [stage 2/3] judging failure in '{section}'…")
-            judge_raw = run_agent(agent, PROMPTS_DIR / "judge.md", judge_prompt)
-            verdict = extract_json(judge_raw)
-            if not isinstance(verdict, dict):
-                print(f"  ⚠ judge returned non-dict: {judge_raw[:200]}")
+            judge_tasks.append({
+                "id": i,
+                "prompt": judge_prompt,
+                "system_prompt_path": str(PROMPTS_DIR / "judge.md"),
+            })
+
+        if workers > 1 and len(judge_tasks) > 1:
+            print(f"\n  [stage 2/3] running {len(judge_tasks)} judge calls in parallel (workers={workers})…")
+            judge_results = fan_out(judge_tasks, workers=workers, model=model, agent=agent)
+        else:
+            print(f"\n  [stage 2/3] running judge calls sequentially…")
+            judge_results = []
+            for task in judge_tasks:
+                raw = run_agent(agent, PROMPTS_DIR / "judge.md", task["prompt"])
+                judge_results.append({"id": task["id"], "result": raw, "error": None})
+
+        for jr in judge_results:
+            failure, td = all_pending_failures[jr["id"]]
+            section = failure["responsible_section"]
+            if jr["error"]:
+                print(f"  ⚠ judge failed for '{section}': {jr['error']}")
                 continue
-
+            verdict = extract_json(jr["result"])
+            if not isinstance(verdict, dict):
+                print(f"  ⚠ judge returned non-dict: {jr['result'][:200]}")
+                continue
             failure["verdict"] = verdict
-            scored_failures.append(failure)
-
-            # Card 005: apply recency weight to judge score
-            weight = verdict.get("weight", 0.0) * recency_weight
+            all_failures.append(failure)
+            weight = verdict.get("weight", 0.0) * td["recency_weight"]
             section_scores.setdefault(section, []).append(weight)
-
-        all_failures.extend(scored_failures)
 
     if dry_run:
         return
@@ -765,65 +846,150 @@ def calibrate(
     updated_agents_md = agents_md
     edit_distances: dict[str, int] = {}
     diversity_metrics: dict[str, dict] = {}
+
+    # Filter sections eligible for fixing
+    eligible_sections: dict[str, tuple[list[dict], float, dict]] = {}
     for section, failures in sections_to_fix.items():
         if is_converged(section, reflections):
             print(f"  ✓ {section}: converged, skipping")
             continue
-
         avg_weight = sum(f["verdict"]["weight"] for f in failures) / len(failures)
         if avg_weight < 0.3:
             print(f"  ✓ {section}: low weight ({avg_weight:.2f}), skipping")
             continue
-
-        # Card 006: diversity metric
         diversity = compute_diversity(failures)
         diversity_metrics[section] = diversity
         if diversity["overfit_warning"]:
             print(f"  ⚠ {section}: potential overfit — addresses only {diversity['category_count']} category across {diversity['transcript_count']} transcript(s)")
+        eligible_sections[section] = (failures, avg_weight, diversity)
 
+    # Build implementer tasks
+    impl_tasks = []
+    impl_section_order = []
+    for section, (failures, avg_weight, diversity) in eligible_sections.items():
         section_content = extract_section(agents_md, section)
+        section_tokens = count_tokens(section_content)
+        remaining_budget = token_budget - count_tokens(updated_agents_md) + section_tokens
         recent_history = [r for r in reflections[-5:] if r.get("section") == section]
-
         implement_prompt = (
             f"Current section '{section}':\n```\n{section_content}\n```\n\n"
             f"Scored failures:\n{json.dumps(failures, indent=2)}\n\n"
-            f"Recent history for this section:\n{json.dumps(recent_history, indent=2)}"
+            f"Recent history for this section:\n{json.dumps(recent_history, indent=2)}\n\n"
+            f"Token context: current_section_tokens={section_tokens}, remaining_budget={remaining_budget}\n"
+            f"Your output MUST NOT exceed {section_tokens} tokens. Prefer compression."
         )
-        print(f"  [stage 3/3] implementing fix for '{section}'…")
-        new_content = run_agent(agent, PROMPTS_DIR / "implementer.md", implement_prompt)
+        impl_tasks.append({
+            "id": len(impl_tasks),
+            "prompt": implement_prompt,
+            "system_prompt_path": str(PROMPTS_DIR / "implementer.md"),
+        })
+        impl_section_order.append((section, avg_weight))
 
-        # Post-processing: strip LLM meta-commentary artifacts
-        new_content = strip_prompt_artifacts(new_content)
+    # Track section ROI for post-loop budget enforcement
+    _section_roi_tracker: list[tuple[str, float, str, str]] = []  # (section, roi, new_content, old_content)
 
-        if not new_content:
-            print(f"  ⚠ {section}: implementer returned empty content, skipping")
-            continue
-
-        # Validation: reject if prompt leak patterns still present
-        leaks = validate_no_prompt_leaks(new_content)
-        if leaks:
-            print(f"  ⚠ {section}: prompt leak detected after stripping, rejecting update")
-            for leak in leaks:
-                print(f"    leak pattern: {leak}")
-            continue
-
-        # Card 004: diff size penalty — compute edit distance and improvement/change ratio
-        edit_dist = compute_edit_distance(section_content, new_content)
-        edit_distances[section] = edit_dist
-        score_improvement = avg_weight  # use judge weight as proxy for improvement
-        if edit_dist > 0:
-            roi_ratio = score_improvement / edit_dist
-            print(f"  edit_distance={edit_dist}, improvement={score_improvement:.3f}, ROI={roi_ratio:.4f}")
-            # Reject if large rewrite with tiny improvement (threshold: 0.01 improvement per line changed)
-            if roi_ratio < 0.01:
-                print(f"  ⚠ {section}: low ROI rewrite (ratio={roi_ratio:.4f} < 0.01), rejecting change")
-                continue
+    # Run implementer tasks (parallel for independent sections when workers > 1)
+    if impl_tasks:
+        if workers > 1 and len(impl_tasks) > 1:
+            print(f"\n  [stage 3/3] running {len(impl_tasks)} implementer calls in parallel (workers={workers})…")
+            impl_results = fan_out(impl_tasks, workers=workers, model=model, agent=agent)
         else:
-            print(f"  edit_distance=0 (no change)")
-            continue
+            print(f"\n  [stage 3/3] running implementer calls sequentially…")
+            impl_results = []
+            for task in impl_tasks:
+                raw = run_agent(agent, PROMPTS_DIR / "implementer.md", task["prompt"])
+                impl_results.append({"id": task["id"], "result": raw, "error": None})
 
-        updated_agents_md = replace_section(updated_agents_md, section, new_content)
-        print(f"  ✏ {section}: updated")
+        for ir in impl_results:
+            section, avg_weight = impl_section_order[ir["id"]]
+            if ir["error"]:
+                print(f"  ⚠ {section}: implementer failed: {ir['error']}")
+                continue
+
+            new_content = strip_prompt_artifacts(ir["result"])
+            if not new_content:
+                print(f"  ⚠ {section}: implementer returned empty content, skipping")
+                continue
+
+            leaks = validate_no_prompt_leaks(new_content)
+            if leaks:
+                print(f"  ⚠ {section}: prompt leak detected after stripping, rejecting update")
+                for leak in leaks:
+                    print(f"    leak pattern: {leak}")
+                continue
+
+            section_content = extract_section(agents_md, section)
+            old_tokens = count_tokens(section_content)
+            new_tokens = count_tokens(new_content)
+            token_delta_section = new_tokens - old_tokens
+            edit_dist = compute_edit_distance(section_content, new_content)
+            edit_distances[section] = edit_dist
+            score_improvement = avg_weight
+
+            if edit_dist == 0:
+                print(f"  edit_distance=0 (no change)")
+                continue
+
+            # Token-based ROI gating (card 005)
+            token_roi = score_improvement / max(abs(token_delta_section), 1)
+            print(f"  tokens: {old_tokens}→{new_tokens} (delta={token_delta_section:+d}), edit_distance={edit_dist}, improvement={score_improvement:.3f}, token_roi={token_roi:.4f}")
+
+            if token_roi < 0.005:
+                print(f"  ⚠ {section}: low token ROI ({token_roi:.4f} < 0.005), rejecting change")
+                continue
+
+            if new_tokens > old_tokens:
+                if score_improvement < 0.5:
+                    print(f"  ⚠ {section}: token growth (+{token_delta_section}) with low improvement ({score_improvement:.3f} < 0.5), rejecting")
+                    continue
+                else:
+                    print(f"  ⚠ {section}: token growth (+{token_delta_section}) accepted — improvement {score_improvement:.3f} >= 0.5")
+
+            # Token budget enforcement: check if this change would exceed budget
+            candidate = replace_section(updated_agents_md, section, new_content)
+            candidate_tokens = count_tokens(candidate)
+            if candidate_tokens > token_budget:
+                print(f"  ⚠ {section}: rejected — would push tokens to {candidate_tokens:,} (budget: {token_budget:,})")
+                continue
+            if candidate_tokens > budget_90:
+                print(f"  ⚠ {section}: approaching budget — {candidate_tokens:,}/{token_budget:,} ({candidate_tokens/token_budget*100:.1f}%)")
+
+            updated_agents_md = candidate
+            # Track ROI for post-loop budget enforcement
+            _section_roi_tracker.append((section, token_roi, new_content, section_content))
+            print(f"  ✏ {section}: updated")
+
+    # Post-loop total budget enforcement: reject lowest-ROI changes until under budget
+    total_tokens_now = count_tokens(updated_agents_md)
+    if total_tokens_now > token_budget and _section_roi_tracker:
+        print(f"\n⚠ Over budget after all fixes: {total_tokens_now:,} > {token_budget:,} — reverting lowest-ROI changes")
+        # Sort by ROI ascending (lowest first = revert first)
+        _section_roi_tracker.sort(key=lambda x: x[1])
+        for section, roi, new_content, old_content in _section_roi_tracker:
+            if count_tokens(updated_agents_md) <= token_budget:
+                break
+            updated_agents_md = replace_section(updated_agents_md, section, old_content)
+            print(f"  ↩ reverted '{section}' (token_roi={roi:.4f})")
+
+    # Optional compression pass: if still over budget, compress largest sections
+    post_impl_tokens = count_tokens(updated_agents_md)
+    if post_impl_tokens > token_budget and updated_agents_md != agents_md:
+        from .compress import compress_section
+        from .tokens import count_section_tokens as _count_sections
+        print(f"\n  [compression] over budget ({post_impl_tokens:,} > {token_budget:,}), running compression…")
+        section_toks = _count_sections(updated_agents_md)
+        for sec_name, sec_toks in sorted(section_toks.items(), key=lambda x: -x[1]):
+            if count_tokens(updated_agents_md) <= token_budget:
+                break
+            sec_content = extract_section(updated_agents_md, sec_name)
+            if not sec_content.strip():
+                continue
+            compressed, saved = compress_section(sec_content, agent=agent, model=model)
+            if saved > 0:
+                updated_agents_md = replace_section(updated_agents_md, sec_name, compressed)
+                print(f"    compressed [{sec_name}]: -{saved} tokens")
+        final_tokens = count_tokens(updated_agents_md)
+        print(f"  [compression] tokens after: {final_tokens:,} (budget: {token_budget:,})")
 
     # Persist — write and commit via git (no _vN.md copies)
     if updated_agents_md != agents_md:
@@ -888,6 +1054,21 @@ def calibrate(
         keys = all_deltas[0].keys()
         agg_delta = {k: round(sum(d.get(k, 0) for d in all_deltas) / len(all_deltas), 3) for k in keys}
 
+    # Token tracking: measure after
+    tokens_after_total = count_tokens(updated_agents_md)
+    tokens_after_sections = count_section_tokens(updated_agents_md) if updated_agents_md != agents_md else tokens_before["sections"]
+    token_delta = tokens_after_total - tokens_before["total"]
+    token_pct = (token_delta / tokens_before["total"] * 100) if tokens_before["total"] else 0.0
+
+    # Section-level token deltas
+    section_token_deltas = {}
+    all_section_names = set(tokens_before["sections"]) | set(tokens_after_sections)
+    for sec in all_section_names:
+        before_sec = tokens_before["sections"].get(sec, 0)
+        after_sec = tokens_after_sections.get(sec, 0)
+        if before_sec != after_sec:
+            section_token_deltas[sec] = after_sec - before_sec
+
     reflection_entry = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "transcripts": [str(t) for t in transcripts],
@@ -906,6 +1087,12 @@ def calibrate(
         "test_transcripts": len(test_transcripts),
         "train_avg_score": train_avg,
         "test_avg_score": test_avg,
+        # Card 001: token tracking
+        "tokens_before": tokens_before["total"],
+        "tokens_after": tokens_after_total,
+        "token_delta": token_delta,
+        "token_budget": token_budget,
+        "section_token_deltas": section_token_deltas,
     }
     save_reflection(history_dir, reflection_entry)
     save_score(
@@ -919,9 +1106,22 @@ def calibrate(
             "train_avg": train_avg,
             "test_avg": test_avg,
             "split": {"train": len(train_transcripts), "test": len(test_transcripts)},
+            # Card 001: token tracking
+            "tokens_before": tokens_before["total"],
+            "tokens_after": tokens_after_total,
+            "token_delta": token_delta,
+            "token_budget": token_budget,
         },
         repo_root=repo_root,
     )
+
+    # Token summary
+    sign = "+" if token_delta >= 0 else ""
+    print(f"\nTokens: {tokens_before['total']:,} → {tokens_after_total:,} ({sign}{token_delta:,}, {sign}{token_pct:.1f}%) | budget: {token_budget:,}")
+    if section_token_deltas:
+        for sec, delta_val in section_token_deltas.items():
+            s = "+" if delta_val >= 0 else ""
+            print(f"  [{sec}] {s}{delta_val:,} tokens")
 
     print(f"\nCalibration complete | avg={avg} | failures={len(all_failures)} | sections={agg_scores}")
     if agg_delta:
