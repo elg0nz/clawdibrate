@@ -1,6 +1,6 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.12.0** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.12.1** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **PATCH** = backward-compatible fixes (wording, tuning). **MINOR** = new backward-compatible functionality (new sections, commands, skills). **MAJOR** = incompatible changes to the calibration loop contract or CLI interface.
 >
@@ -10,7 +10,7 @@
 
 ## Identity
 
-See `/clawdbrt:identity` for detailed guidance.
+`/clawdbrt:identity`
 
 
 ## Setup
@@ -42,81 +42,74 @@ See `/clawdbrt:commands` for detailed guidance.
 
 ## Skills
 
-Skills route to `src/skills/<name>/SKILL.md` with `clawdbrt:` prefix. YAML frontmatter: `name: clawdbrt:<skill-name>`, `description`. Register: `npx skills add ./src/skills --agent <agents> --skill '*' -y --global`. Commit `skills-lock.json`, `skills/`, `.agents/`. Source: `src/skills/` only—never edit `skills/`/`.agents/skills/`. All capabilities must be skills.
+Skills: `src/skills/<name>/SKILL.md`, prefix `clawdbrt:`. Frontmatter: `name: clawdbrt:<skill-name>`, `description`. Register: `npx skills add ./src/skills --agent <agents> --skill '*' -y --global`. Commit `skills-lock.json`, `skills/`, `.agents/`. Edit only `src/skills/`—never `skills/`/`.agents/skills/`. All capabilities must be skills.
 
-Core: `/clawdbrt:loop` (tuning), `/clawdbrt:kanban` (cards), `/clawdbrt:add-new-features` (proposals), `/clawdbrt:implement` (parallel), `/clawdbrt:scores` (scoreboard).
+Core skills: `loop` (tuning), `kanban` (cards), `add-new-features` (proposals), `implement` (parallel), `scores` (scoreboard).
 
-Section skills: score <0.7 (3+ runs) or churn ≥3 → `src/skills/<kebab>/SKILL.md`. Reference: `See /clawdbrt:<skill>`.
+Extract section to `src/skills/<kebab>/SKILL.md` when score <0.7 (3+ runs) or churn ≥3. Reference inline as `See /clawdbrt:<skill>`.
 
 
 ## Bootstrap Transcript Calibrator
 
-Transcript-based architecture: `transcript → metrics → bug-identifier → judge → implementer → section-scoped edits → new AGENTS.md`
+Transcript pipeline: `transcript → metrics → bug-identifier → judge → implementer → section-scoped edits → new AGENTS.md`
 
-**Version specs:** Latest `docs/vX_Y_Z/specs/` first, fallback to older. Reference: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orchestrator.py`
+**Specs:** Use latest `docs/vX_Y_Z/specs/`; fallback to older. Ref: latest `docs/vX_Y_Z/README.md` + `clawdibrate/orchestrator.py`
 
-**Before analysis:** Verify transcript completeness and AGENTS.md input ends properly. STOP if truncated.
+**Pre-analysis:** Verify transcript completeness + AGENTS.md ends properly. STOP if truncated.
 
-**Boundary:** AGENTS.md injected as system prompt — NEVER use Read with offset/limit on AGENTS.md.
+**AGENTS.md boundary:** Injected as system prompt — Read in full only, never with offset/limit.
 
 **Rules:**
-- Auto-detect high-churn sections (≥3 edits), flag before changes
-- Read large files once fully (no offset/limit) — chunking wastes 4x calls/tokens 
-- Multiple files (>3): single agent with batch instructions OR parallel tool calls
-- Either delegate exploration OR read directly — never both for same files
-- Verify current content before editing AGENTS.md sections
-- Never output shell commands as markdown code blocks — always use Shell tool
-- Output complete, valid JSON with all required fields
+- Flag high-churn sections (≥3 edits) before editing
+- File reads: Read tool only (offset/limit ok except AGENTS.md); no `cat`/`head`/`sed -n` via Bash
+- File discovery: Glob only; content search: Grep only — no `find`/`grep` via Bash
+- >3 files: single batched agent OR parallel tool calls
+- Delegate exploration OR read directly — never both for same files
+- Always Read before Edit; on success never re-edit without re-reading
+- Shell commands: Shell tool only — never markdown code blocks
+- Output: complete valid JSON with all required fields
 
 
 ## Tuning Rules
 
-See `/clawdbrt:tuning-rules` for detailed guidance.
+`/clawdbrt:tuning-rules`
 
 
 ## Boundaries
 
-- Use latest `docs/vX_Y_Z/`, fallback to older
-- Inject AGENTS.md as system prompt for calibration
-- Save `.clawdibrate/iterations/AGENTS_vN.md` before overwrite
-- Track `reflection_history` across iterations
-- Route failures to specific section
-- `git commit` after version update
-- Complete `docs/vX_Y_Z/README.md` before commit
-- Skills: `src/skills/{name}/SKILL.md` → `npx skills add ./src/skills --agent <agents> --skill '*' -y --global`
-- Spawn parallel agents for independent kanban cards
-- Don't read files if agent spawned to read them
+- Use latest `docs/vX_Y_Z/`; fallback to older
+- Inject AGENTS.md as system prompt; save `.clawdibrate/iterations/AGENTS_vN.md` before overwrite; track `reflection_history`; route failures to specific section
 - Flow: SPEC.md → kanban → icebox → cards → README.md → CHANGELOG.md → bump → commit
-- `/clawdbrt:loop` calibrates, `/clawdbrt:add-new-features` MINOR only, MAJOR needs approval
-- Check tools before implementing
-- Tickets: `clwdi-v{MAJOR}_{MINOR}_{PATCH}-{NNN}.md`, rename on move, copy `icebox.md`
+- Version bump atomic: `pyproject.toml` + `AGENTS.md` header + `CHANGELOG.md`; use `/clawdbrt:bump-version` if exists; `git commit` after
+- Skills: `src/skills/{name}/SKILL.md` → `npx skills add ./src/skills --agent <agents> --skill '*' -y --global`
+- Tickets: `clwdi-v{MAJOR}_{MINOR}_{PATCH}-{NNN}.md`; rename on move; copy `icebox.md`
+- Spawn parallel agents for independent kanban cards; don't read files if agent spawned to read them
+- `/clawdbrt:loop`=PATCH calibration; `/clawdbrt:add-new-features`=MINOR only; MAJOR needs approval
 - Ask first: new eval types, judge <0.7
 - Never: rewrite converged (≥0.95, 3+ iter), remove Boundaries, add lines without instruction, use checklists/TaskCreate, edit `skills/`/`.agents/` directly, auto-bump MAJOR
+- Check tools before implementing
 
 
 ## Known Gotchas
 
-- **JSON parse failures**: `try/except` → regex `\{.*\}` fallback (`re.DOTALL`)
-- **Claude flag**: use `-p` for prompts, not bare args
-- **Claude resume**: `claude --continue`, not fresh invocation
-- **Subprocess timeout**: enforce `timeout=120` in `subprocess.run()`
-- **Score plateaus**: capture harder sessions before rewriting sections
-- **Regression trap**: check `reflection_history` before rewriting failing tasks
-- **Claude Code format**: JSONL at `~/.claude/projects/<mangled-cwd>/` (`/` → `-`). Parse message types/content blocks directly
+- JSON parse fail: `try/except` → regex `re.search(r'\{.*\}', s, re.DOTALL)`
+- Claude prompt flag: `-p`, not bare args
+- Claude resume: `--continue`, not fresh invocation
+- Subprocess: `timeout=120` in `subprocess.run()`
+- Score plateau: capture harder sessions before rewriting sections
+- Regression: check `reflection_history` before rewriting failing tasks
+- CC logs: JSONL at `~/.claude/projects/<mangled-cwd>/` (`/`→`-`); parse message types/content blocks directly
 
 
 ## Score Tracking
 
-Log after every calibration run to stdout and `.clawdibrate/history/scores.jsonl`:
+After every calibration run, log to stdout and append to these files:
 
-```
-Calibration complete | avg=0.00 | failures=0 | sections={Commands: 0.0, Setup: 0.0, ...}
-```
+`.clawdibrate/history/scores.jsonl` — `Calibration complete | avg=0.00 | failures=0 | sections={Commands: 0.0, Setup: 0.0, ...}`
+`.clawdibrate/history/reflections.jsonl` — reflection history
+`.clawdibrate/history/baselines.jsonl` — baseline metrics
+`.clawdibrate/history/instrumentation.jsonl` — stage timings, mode, estimate, token deltas
 
-Persist reflection history to `.clawdibrate/history/reflections.jsonl` and baseline metrics to `.clawdibrate/history/baselines.jsonl`.
-Persist run instrumentation (stage timings, mode, estimate, token deltas) to `.clawdibrate/history/instrumentation.jsonl`.
-
----
 
 ## References
 
@@ -129,10 +122,10 @@ Persist run instrumentation (stage timings, mode, estimate, token deltas) to `.c
 <!-- BEGIN BEADS INTEGRATION -->
 ## Issue Tracking with bd (beads)
 
-See `/clawdbrt:issue-tracking-with-bd-beads` for detailed guidance.
+`Run /clawdbrt:issue-tracking-with-bd-beads for guidance.`
 
 
 ## Landing the Plane (Session Completion)
 
-See `/clawdbrt:landing-the-plane-session-completion` for detailed guidance.
+`/clawdbrt:landing-the-plane-session-completion` handles all commits. Never run `git add/commit/push` manually.
 
