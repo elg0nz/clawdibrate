@@ -1,6 +1,6 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.9.7** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.9.8** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **PATCH** = backward-compatible fixes (wording, tuning). **MINOR** = new backward-compatible functionality (new sections, commands, skills). **MAJOR** = incompatible changes to the calibration loop contract or CLI interface.
 
@@ -19,7 +19,7 @@ npx skills add ./src/skills --agent claude-code cursor codex --skill '*' -y
 
 **Agent env:**
 1. `repo/.clawdibrate/env` — copy `clawdibrate.env.example`, set `CLAWDIBRATE_AGENT=cursor`
-2. Fallback: `repo/.env` (only `CLAWDIBRATE_*` keys)
+2. Fallback: `repo/.env` (`CLAWDIBRATE_*` keys only)
 
 **Built-in agents** (`--agent`/`CLAWDIBRATE_AGENT`, default `claude`):
 - `cursor` — `cursor agent --print --force`
@@ -60,9 +60,10 @@ Section skills: score <0.7 (3+ runs) or churn ≥3 → `src/skills/<kebab>/SKILL
 
 ## Bootstrap Transcript Calibrator
 
+```
 Transcript-based architecture: `transcript → metrics → bug-identifier → judge → implementer → section-scoped edits → new AGENTS.md`
 
-**Version specs:** Latest `docs/vX_Y_Z/specs/` first, fallback to older only if missing. Reference: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orchestrator.py`
+**Version specs:** Latest `docs/vX_Y_Z/specs/` first, fallback to older. Reference: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orchestrator.py`
 
 **Before analysis:** Verify transcript completeness. Request complete data if truncated.
 
@@ -70,12 +71,13 @@ Transcript-based architecture: `transcript → metrics → bug-identifier → ju
 
 **Rules:**
 - Auto-detect high-churn sections (≥3 edits), flag before changes
-- Read large files once fully (no offset/limit) — chunking wastes 4x calls/tokens  
+- Read large files once fully (no offset/limit) — chunking wastes 4x calls/tokens 
 - Multiple files (>3): single agent with batch instructions OR parallel tool calls
 - Either delegate exploration OR read directly — never both for same files
 - Verify current content before editing AGENTS.md sections
 - Never output shell commands as markdown code blocks — always use Shell tool
 - Output complete, valid JSON with all required fields
+```
 
 
 ## Tuning Rules
