@@ -1,6 +1,6 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.9.5** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.9.6** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **PATCH** = backward-compatible fixes (wording, tuning). **MINOR** = new backward-compatible functionality (new sections, commands, skills). **MAJOR** = incompatible changes to the calibration loop contract or CLI interface.
 
@@ -51,22 +51,11 @@ python -m clawdibrate --dry-run                    # inspect the run without edi
 
 ## Skills
 
-Slash commands route to `SKILL.md` files in `src/skills/`. All skills use `clawdbrt:` prefix.
+Skills route to `src/skills/<name>/SKILL.md` with `clawdbrt:` prefix. YAML frontmatter: `name: clawdbrt:<skill-name>`, `description`. Register: `npx skills add ./src/skills --agent <agents> --skill '*' -y`. Commit `skills-lock.json`, `skills/`, `.agents/`. Source: `src/skills/` only—never edit `skills/`/`.agents/skills/`. All capabilities must be skills.
 
-**Registration:** `src/skills/<name>/SKILL.md` with YAML frontmatter (`name: clawdbrt:<skill-name>`, `description`). Run `npx skills add ./src/skills --agent <detected-agents> --skill '*' -y`. Commit `skills-lock.json` and updated `skills/`/`.agents/` files.
+Core: `/clawdbrt:loop` (tuning), `/clawdbrt:kanban` (cards), `/clawdbrt:add-new-features` (proposals), `/clawdbrt:implement` (parallel), `/clawdbrt:scores` (scoreboard).
 
-**Source:** `src/skills/` is canonical. Never edit `skills/`/`.agents/skills/` directly.
-
-**Implementation:** All new capabilities must be skills. Use `/clawdbrt:` commands only.
-
-**Core skills:**
-- `/clawdbrt:loop` — tuning loop, PATCH versions
-- `/clawdbrt:kanban` — card management in `docs/vX_Y_Z/kanban/`
-- `/clawdbrt:add-new-features` — feature proposals, MINOR versions
-- `/clawdbrt:implement` — kanban implementation with parallel agents
-- `/clawdbrt:scores` — calibration scoreboard
-
-**Section skills:** Score <0.7 across 3+ runs or git churn ≥3 → create `src/skills/<kebab-section-name>/SKILL.md`. Reference: `See /clawdbrt:<skill-name> for detailed guidance.`
+Section skills: score <0.7 (3+ runs) or churn ≥3 → `src/skills/<kebab>/SKILL.md`. Reference: `See /clawdbrt:<skill>`.
 
 
 ## Bootstrap Transcript Calibrator
@@ -128,7 +117,7 @@ Transcript-based architecture: `transcript → metrics → bug-identifier → ju
 - **Subprocess timeout**: agent CLIs can hang — enforce `timeout=120` in `subprocess.run()`
 - **Score plateaus**: if avg_score stalls across multiple transcript runs, capture harder sessions before rewriting more sections
 - **Regression trap**: if a passing task starts failing, check `reflection_history` before rewriting
-- **Claude Code session format**: JSONL at `~/.claude/projects/<mangled-cwd>/` (path `/` → `-`). Structure: `{"type":"user"|"assistant","message":{"content":[text|tool_use|tool_result]}}`. Parse message types and content blocks directly; avoid exploratory reverse-engineering.
+- **Claude Code session format**: JSONL at `~/.claude/projects/<mangled-cwd>/` (path `/` → `-`). Structure: `{"type":"user"|"assistant","message":{"content":[{"type":"text","text":"..."}|{"type":"tool_use","id":"...","name":"...","input":{...}}|{"type":"tool_result","tool_use_id":"...","content":"..."}]}}`. Parse message types and content blocks directly; avoid exploratory reverse-engineering.
 
 
 ## Score Tracking
