@@ -1421,13 +1421,16 @@ def calibrate(
         updated_agents_md, bumped_to = bump_patch_version(updated_agents_md)
         instruction_path.write_text(updated_agents_md)
         try:
-            add_paths = [str(instruction_path)]
-            if iteration_snapshot is not None:
-                add_paths.append(str(iteration_snapshot))
             subprocess.run(
-                ["git", "-C", str(repo_root), "add", *add_paths],
+                ["git", "-C", str(repo_root), "add", str(instruction_path)],
                 check=True, capture_output=True,
             )
+            if iteration_snapshot is not None:
+                # snapshot lives in .clawdibrate/ which may be gitignored — best-effort
+                subprocess.run(
+                    ["git", "-C", str(repo_root), "add", str(iteration_snapshot)],
+                    capture_output=True,
+                )
             commit_subject = f"clawdibrate: calibrate {instruction_path.name}"
             if bumped_to is not None:
                 commit_subject = f"clawdibrate: calibrate {instruction_path.name} -> {bumped_to[0]}.{bumped_to[1]}.{bumped_to[2]}"
