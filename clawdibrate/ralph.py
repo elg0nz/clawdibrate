@@ -53,15 +53,8 @@ def run_worker(
 
     cmd = template.format(
         system_prompt=_shell_quote(str(system_prompt_path)),
-        prompt=_shell_quote(str(prompt_file)),
+        prompt=f'"$(cat {_shell_quote(str(prompt_file))})"',
     )
-    # Replace -p '<prompt_file_path>' with -p "$(cat <prompt_file_path>)"
-    # so the prompt content is read from the file at execution time
-    if agent == "claude":
-        cmd = cmd.replace(
-            f"-p {_shell_quote(str(prompt_file))}",
-            f'-p "$(cat {_shell_quote(str(prompt_file))})"',
-        )
 
     result = subprocess.run(
         cmd,
@@ -70,6 +63,7 @@ def run_worker(
         stderr=None,
         text=True,
         timeout=timeout,
+        stdin=subprocess.DEVNULL,
     )
 
     # Clean up prompt file

@@ -303,7 +303,7 @@ def run_agent(agent: str, system_prompt_path: Path, prompt: str, timeout: int = 
     )
     # Capture stdout (contains the JSON result) but stream stderr to terminal for progress
     result = subprocess.run(
-        cmd, shell=True, stdout=subprocess.PIPE, stderr=None, text=True, timeout=timeout,
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=None, text=True, timeout=timeout, stdin=subprocess.DEVNULL,
     )
     if result.returncode != 0:
         raise RuntimeError(f"Agent {agent} exited {result.returncode}")
@@ -388,6 +388,16 @@ def resolve_repo_root(repo_root: Path | None = None) -> Path:
         raise RuntimeError(
             f"{active_rel} is not tracked by git. "
             f"Run `git add {active_rel}` and commit before calibrating."
+        )
+
+    status = subprocess.run(
+        ["git", "-C", str(repo_root), "status", "--porcelain", active_rel],
+        check=True, capture_output=True, text=True
+    ).stdout.strip()
+    if status:
+        raise RuntimeError(
+            f"{active_rel} has uncommitted changes. "
+            f"Commit or stash them before calibrating."
         )
 
     return repo_root
@@ -991,23 +1001,6 @@ def calibrate(
         final_tokens = count_tokens(updated_agents_md)
         print(f"  [compression] tokens after: {final_tokens:,} (budget: {token_budget:,})")
 
-    # Persist — write and commit via git (no _vN.md copies)
-    if updated_agents_md != agents_md:
-        instruction_path.write_text(updated_agents_md)
-        try:
-            subprocess.run(
-                ["git", "-C", str(repo_root), "add", str(instruction_path)],
-                check=True, capture_output=True,
-            )
-            subprocess.run(
-                ["git", "-C", str(repo_root), "commit", "-m",
-                 f"clawdibrate: calibrate {instruction_path.name}"],
-                check=True, capture_output=True,
-            )
-            print(f"\n✓ {instruction_path.name} updated and committed")
-        except subprocess.CalledProcessError as exc:
-            print(f"\n✓ {instruction_path.name} updated (git commit failed: {exc})")
-
     # Card 003: score test set after changes (without modifying AGENTS.md)
     test_scores: dict[str, list[float]] = {}
     if test_transcripts and updated_agents_md != agents_md:
@@ -1043,6 +1036,23 @@ def calibrate(
     else:
         train_avg = 0.0
         test_avg = 0.0
+
+    # Persist — write and commit via git (no _vN.md copies)
+    if updated_agents_md != agents_md:
+        instruction_path.write_text(updated_agents_md)
+        try:
+            subprocess.run(
+                ["git", "-C", str(repo_root), "add", str(instruction_path)],
+                check=True, capture_output=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(repo_root), "commit", "-m",
+                 f"clawdibrate: calibrate {instruction_path.name}"],
+                check=True, capture_output=True,
+            )
+            print(f"\n✓ {instruction_path.name} updated and committed")
+        except subprocess.CalledProcessError as exc:
+            print(f"\n✓ {instruction_path.name} updated (git commit failed: {exc})")
 
     # Compute and log aggregate section scores
     agg_scores = {s: round(sum(scores) / len(scores), 3) for s, scores in section_scores.items()}
