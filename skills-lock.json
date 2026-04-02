@@ -61,6 +61,11 @@
       "sourceType": "local",
       "computedHash": "66f1071434b8aef0a25205e90dfd8b85e1e174098430c06923e44e034dc566b4"
     },
+    "clawdbrt:present": {
+      "source": "/Users/gonz/Code/clawdibrate/src/skills",
+      "sourceType": "local",
+      "computedHash": "2bbb6b3b68ca8ed8b567f70c6665b3f120f0eaa995f3f82074430dfeea650673"
+    },
     "clawdbrt:presubmit": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",

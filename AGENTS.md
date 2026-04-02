@@ -1,6 +1,6 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.10.1** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.11.0** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **PATCH** = backward-compatible fixes (wording, tuning). **MINOR** = new backward-compatible functionality (new sections, commands, skills). **MAJOR** = incompatible changes to the calibration loop contract or CLI interface.
 

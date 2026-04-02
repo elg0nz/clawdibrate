@@ -6,12 +6,14 @@ description: "Externalized AGENTS.md heading 'Commands' as clawdbrt:commands (cl
 # Commands
 
 ```bash
-python -m clawdibrate                              # calibrate from recorded transcripts
+# Loop modes (progressive is the default — cancel-safe, right for 90% of runs)
+python -m clawdibrate                              # progressive: cancel-safe mini-iterations (default)
+python -m clawdibrate --mode fast                  # fast: single pass, quick spot-check or CI gate
+python -m clawdibrate --mode max --target-score 0.9 # max: iterate until optimized / plateau
+
+# Agent selection
 python -m clawdibrate --agent cursor               # Cursor Agent CLI (or use .clawdibrate/env)
 python -m clawdibrate --agent codex                # use codex as the calibration agent
-python -m clawdibrate --mode fast                  # quick low-hanging-fruit pass
-python -m clawdibrate --mode progressive           # cancel-safe mini-iterations
-python -m clawdibrate --mode max --target-score 0.9 # iterate until optimized / plateau
 python -m clawdibrate --no-auto-section-skills     # calibrate only; do not auto-create section skills / npx
 python -m clawdibrate --transcript path/to.jsonl   # calibrate from one transcript
 python -m clawdibrate --dry-run                    # inspect the run without editing AGENTS.md

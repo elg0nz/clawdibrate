@@ -125,15 +125,7 @@ python -m clawdibrate --repo . --dry-run 2>&1
 
 ## Step 4: Test each mode
 
-### 4a. Standard mode (single pass)
-
-```bash
-python -m clawdibrate --repo . --mode standard --no-auto-section-skills 2>&1 | tee /tmp/smoke-standard.log
-```
-
-**Expected:** 3-stage pipeline runs (bug-id → judge → implementer). AGENTS.md updated, version bumped to 0.1.1.
-
-### 4b. Fast mode
+### 4a. Fast mode (single pass)
 
 ```bash
 python -m clawdibrate --repo . --mode fast --no-auto-section-skills 2>&1 | tee /tmp/smoke-fast.log

@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 for tracking AGENTS.md versions.
 
+## [0.11.0] - 2026-04-02
+
+### Changed
+- **Default mode is now `progressive`** — cancel-safe iterative calibration out of the box, no flags needed
+- **Removed `standard` mode** — was a legacy single-pass with no opinionated defaults; `fast` covers the single-pass use case
+- **All three modes now document when to use them** — CLI help, loop skill, and commands skill explain fast vs progressive vs max
+
 ## [0.10.0] - 2026-04-02
 
 ### Added

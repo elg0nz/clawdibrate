@@ -1528,7 +1528,7 @@ def calibrate(
     workers: int = 4,
     model: str = "haiku",
     auto_section_skills: bool = True,
-    run_mode: str = "standard",
+    run_mode: str = "progressive",
     run_iteration: int | None = None,
     target_score: float = 0.9,
 ) -> dict[str, Any]:

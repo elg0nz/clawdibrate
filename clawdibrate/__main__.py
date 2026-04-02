@@ -386,9 +386,14 @@ def main() -> None:
     )
     parser.add_argument(
         "--mode",
-        choices=["standard", "fast", "progressive", "max"],
-        default="standard",
-        help="Calibration mode: standard, fast, progressive (cancel-safe mini-runs), or max (run until optimized/plateau)",
+        choices=["fast", "progressive", "max"],
+        default="progressive",
+        help=(
+            "Calibration mode (default: progressive). "
+            "fast: single pass over a small transcript batch — use for quick spot-checks or CI gates. "
+            "progressive: cancel-safe mini-iterations — the everyday default, safe to Ctrl-C at any point. "
+            "max: iterate until target score or plateau — use for deep optimization sessions."
+        ),
     )
     parser.add_argument(
         "--target-score",

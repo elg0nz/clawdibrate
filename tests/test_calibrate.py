@@ -648,7 +648,7 @@ class TestPersistence:
         instrumentation_file = env["history_dir"] / "instrumentation.jsonl"
         assert instrumentation_file.exists()
         entry = json.loads(instrumentation_file.read_text().strip().splitlines()[-1])
-        assert entry["mode"] == "standard"
+        assert entry["mode"] == "progressive"
         assert "result" in entry
 
     def test_version_bumped_and_committed(
@@ -1170,7 +1170,7 @@ class TestIdempotencyCheck:
             workers=4,
             model="sonnet",
             no_auto_section_skills=False,
-            mode="standard",
+            mode="progressive",
             target_score=0.9,
             agent=None,
         )
