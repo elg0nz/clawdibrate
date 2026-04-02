@@ -67,6 +67,18 @@ def main():
         help="Tracked instruction files to mine from git history",
     )
     parser.add_argument(
+        "--holdout-ratio",
+        type=float,
+        default=0.2,
+        help="Fraction of transcripts to hold out for overfitting detection (default: 0.2)",
+    )
+    parser.add_argument(
+        "--staleness-halflife-days",
+        type=float,
+        default=30.0,
+        help="Half-life in days for transcript recency decay (default: 30)",
+    )
+    parser.add_argument(
         "--dump-session",
         action="store_true",
         help="Convert the most recent Claude Code session into a clawdibrate transcript",
@@ -97,6 +109,7 @@ def main():
             repo_root=repo_root,
             session_id=args.session_id,
             output_path=args.transcript,
+            agent=agent_name,
         )
         print(output)
         return
@@ -117,6 +130,8 @@ def main():
         transcript_path=args.transcript,
         repo_root=args.repo,
         dry_run=args.dry_run,
+        holdout_ratio=args.holdout_ratio,
+        staleness_halflife_days=args.staleness_halflife_days,
     )
 
 

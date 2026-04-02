@@ -26,7 +26,7 @@ Propose 3-5 concrete features with title, rationale, complexity (S/M/L), and dep
 For approved features: create `docs/vX_Y_Z/`, copy icebox, create SPEC.md, create kanban cards.
 
 ### 5. Implement (if requested)
-Spawn parallel agents for independent cards. Install new skills via `npx skills add ./src/skills --all -y`. Write README, update changelog, bump version, commit.
+Spawn parallel agents for independent cards. Install new skills via `npx skills add ./src/skills --agent <detected-agents> --skill '*' -y`. Write README, update changelog, bump version, commit.
 
 ## Key Rules
 

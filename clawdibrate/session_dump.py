@@ -1,4 +1,8 @@
-"""Convert a Claude Code session JSONL into a clawdibrate transcript."""
+"""Convert agent session logs into clawdibrate transcripts.
+
+Supports pluggable parsers per agent. Claude Code is fully implemented;
+other agents have stub parsers that raise NotImplementedError.
+"""
 
 from __future__ import annotations
 
@@ -12,6 +16,45 @@ ACTION_TOOLS = {"Edit", "Write", "Bash", "NotebookEdit"}
 CORRECTION_PATTERNS = re.compile(
     r"\b(no[, ]not|don'?t|stop|use .+ instead|wrong|that'?s not)\b", re.IGNORECASE
 )
+
+# ---------------------------------------------------------------------------
+# Agent registry
+# ---------------------------------------------------------------------------
+
+# Maps agent name -> parser callable.  Each parser takes (repo_root, session_id)
+# and returns (session_path: Path, events: list[dict]).
+_AGENT_PARSERS: dict[str, object] = {}
+
+# Known agent session directories (relative to $HOME).
+_AGENT_SESSION_HINTS: dict[str, str] = {
+    "claude": ".claude/projects/",
+    "codex": ".codex/",
+    "cursor": ".cursor/",
+    "opencode": ".opencode/",
+}
+
+
+def _detect_agent(repo_root: Path) -> str:
+    """Auto-detect which agent produced sessions for *repo_root*.
+
+    Returns the agent name if exactly one agent's session directory exists,
+    otherwise defaults to ``"claude"``.
+    """
+    home = Path.home()
+    found: list[str] = []
+    for agent, hint in _AGENT_SESSION_HINTS.items():
+        candidate = home / hint
+        if candidate.is_dir():
+            found.append(agent)
+    # If only one agent dir exists, use it; otherwise fall back to claude.
+    if len(found) == 1:
+        return found[0]
+    return "claude"
+
+
+# ---------------------------------------------------------------------------
+# Claude Code parser (fully implemented)
+# ---------------------------------------------------------------------------
 
 # Claude Code stores project sessions under ~/.claude/projects/<mangled-path>/
 # The mangled path replaces "/" with "-" in the absolute cwd.
@@ -44,6 +87,55 @@ def find_latest_session(repo_root: Path, session_id: str | None = None) -> Path:
     return jsonl_files[-1]
 
 
+def _parse_claude_session(
+    repo_root: Path, session_id: str | None = None
+) -> tuple[Path, list[dict]]:
+    """Parse a Claude Code session JSONL and return (path, raw_events)."""
+    session_path = find_latest_session(repo_root, session_id)
+    events: list[dict] = []
+    for line in session_path.read_text().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            events.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return session_path, events
+
+
+_AGENT_PARSERS["claude"] = _parse_claude_session
+
+
+# ---------------------------------------------------------------------------
+# Stub parsers for agents whose session formats are not yet known
+# ---------------------------------------------------------------------------
+
+
+def _make_stub_parser(agent_name: str):
+    """Return a parser function that raises NotImplementedError."""
+
+    def _stub_parser(
+        repo_root: Path, session_id: str | None = None
+    ) -> tuple[Path, list[dict]]:
+        raise NotImplementedError(
+            f"Session parsing for '{agent_name}' is not yet implemented. "
+            f"Contributions welcome!  In the meantime, use "
+            f"/clawdbrt:record-start to record sessions for any agent."
+        )
+
+    return _stub_parser
+
+
+for _agent in ("codex", "cursor", "opencode"):
+    _AGENT_PARSERS[_agent] = _make_stub_parser(_agent)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
 def _extract_user_text(content: list | str) -> str:
     """Extract plain text from a user message content."""
     if isinstance(content, str):
@@ -55,13 +147,36 @@ def _extract_user_text(content: list | str) -> str:
     return " ".join(parts)
 
 
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+
 def dump_session(
     repo_root: Path,
     session_id: str | None = None,
     output_path: Path | None = None,
+    agent: str | None = None,
 ) -> Path:
-    """Convert a Claude Code session JSONL to a clawdibrate transcript."""
-    session_path = find_latest_session(repo_root, session_id)
+    """Convert an agent session into a clawdibrate transcript.
+
+    Parameters
+    ----------
+    agent : str | None
+        Agent name (``"claude"``, ``"codex"``, etc.).  When *None*, the
+        agent is auto-detected from the session directories that exist.
+    """
+    agent_name = agent or _detect_agent(repo_root)
+
+    parser = _AGENT_PARSERS.get(agent_name)
+    if parser is None:
+        supported = ", ".join(sorted(_AGENT_PARSERS))
+        raise RuntimeError(
+            f"Unknown agent '{agent_name}'. Supported agents: {supported}. "
+            f"Use /clawdbrt:record-start to record sessions for any agent."
+        )
+
+    session_path, events = parser(repo_root, session_id)
 
     transcripts_dir = repo_root / ".clawdibrate" / "transcripts"
     transcripts_dir.mkdir(parents=True, exist_ok=True)
@@ -72,17 +187,6 @@ def dump_session(
         output_path = transcripts_dir / f"session-{stem}-{ts}.jsonl"
     elif not output_path.is_absolute():
         output_path = repo_root / output_path
-
-    # Parse the session
-    events: list[dict] = []
-    for line in session_path.read_text().splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            events.append(json.loads(line))
-        except json.JSONDecodeError:
-            continue
 
     tool_count = 0
     search_count = 0

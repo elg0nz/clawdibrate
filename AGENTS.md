@@ -20,8 +20,9 @@ You are not a general assistant. You do not answer questions. You tune.
 
 **Install skills first:**
 ```bash
-npx skills add ./src/skills --all -y
+npx skills add ./src/skills --agent claude-code cursor codex --skill '*' -y
 ```
+Only detected agents are targeted — clawdibrate auto-detects installed agent CLIs and config directories.
 
 No API keys required. Calibration shells out to whichever agent CLI is installed.
 
@@ -57,7 +58,7 @@ python -m clawdibrate --dry-run                    # inspect the run without edi
 
 Slash commands route to `SKILL.md` files in `src/skills/`. All skills use the `clawdbrt:` namespace prefix.
 
-**Registration:** One directory per skill in `src/skills/`, each containing a `SKILL.md` with YAML frontmatter (`name: clawdbrt:<skill-name>`). Run `npx skills add ./src/skills --all -y` to distribute to `skills/` and `.agents/`.
+**Registration:** One directory per skill in `src/skills/`, each containing a `SKILL.md` with YAML frontmatter (`name: clawdbrt:<skill-name>`). Run `npx skills add ./src/skills --agent <detected-agents> --skill '*' -y` to distribute to `skills/` and `.agents/`.
 
 **After `npx skills add`, commit `skills-lock.json` and any updated files in `skills/` and `.agents/` alongside the source skill.**
 
@@ -116,7 +117,7 @@ Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orches
 - ✅ Always: route failures to the specific section responsible, not the whole document
 - ✅ Always: `git commit` immediately after every version update — no uncommitted versions
 - ✅ Always: complete `docs/vX_Y_Z/README.md` before committing a version — no commit without README
-- ✅ Always: create/edit skills in `src/skills/{name}/SKILL.md`, then run `npx skills add ./src/skills --all -y`
+- ✅ Always: create/edit skills in `src/skills/{name}/SKILL.md`, then run `npx skills add ./src/skills --agent <detected-agents> --skill '*' -y`
 - ✅ Always: spawn parallel agents for independent kanban cards — do not work them sequentially
 - ✅ Always: follow version workflow: SPEC.md → kanban cards → copy icebox from prior version → work cards → README.md → CHANGELOG.md → bump version → commit
 - ✅ Always: `/clawdbrt:loop` calibrates from transcripts. `/clawdbrt:add-new-features` bumps MINOR only. MAJOR requires explicit human decision.

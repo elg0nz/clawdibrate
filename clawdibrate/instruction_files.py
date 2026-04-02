@@ -89,8 +89,51 @@ def _bundled_skills_path() -> Path:
     return Path(__file__).parent / "skills"
 
 
+# Agent CLI binary names mapped to their npx-skills --agent flag names and
+# config directory names (checked under both repo root and $HOME).
+KNOWN_AGENTS: list[dict[str, str]] = [
+    {"cli": "claude",     "flag": "claude-code",  "config_dir": ".claude"},
+    {"cli": "cursor",     "flag": "cursor",       "config_dir": ".cursor"},
+    {"cli": "codex",      "flag": "codex",        "config_dir": ".codex"},
+    {"cli": "windsurf",   "flag": "windsurf",     "config_dir": ".windsurf"},
+    {"cli": "opencode",   "flag": "opencode",     "config_dir": ".opencode"},
+    {"cli": "goose",      "flag": "goose",        "config_dir": ".goose"},
+    {"cli": "gemini",     "flag": "gemini-cli",   "config_dir": ".gemini"},
+    {"cli": "continue",   "flag": "continue",     "config_dir": ".continue"},
+    {"cli": "kiro",       "flag": "kiro-cli",     "config_dir": ".kiro"},
+]
+
+
+def detect_installed_agents(repo_root: Path | None = None) -> list[str]:
+    """Return npx-skills agent flag names for agents detected on this system.
+
+    An agent is considered present if its CLI binary is on $PATH **or** its
+    config directory exists under *repo_root* or ``$HOME``.
+    """
+    home = Path.home()
+    detected: list[str] = []
+    for agent in KNOWN_AGENTS:
+        # Check CLI on PATH
+        if shutil.which(agent["cli"]):
+            detected.append(agent["flag"])
+            continue
+        # Check config dir in repo root
+        if repo_root and (repo_root / agent["config_dir"]).is_dir():
+            detected.append(agent["flag"])
+            continue
+        # Check config dir in home
+        if (home / agent["config_dir"]).is_dir():
+            detected.append(agent["flag"])
+            continue
+    return detected
+
+
 def _install_bundled_skills(repo_root: Path) -> bool:
-    """Install bundled clawdibrate skills into the target repo via npx skills add."""
+    """Install bundled clawdibrate skills into the target repo via npx skills add.
+
+    Detects which agent CLIs / config directories are present and installs
+    only to those agents instead of using ``--all``.
+    """
     skills_dir = _bundled_skills_path()
     if not skills_dir.is_dir() or not any(skills_dir.iterdir()):
         return False
@@ -98,20 +141,29 @@ def _install_bundled_skills(repo_root: Path) -> bool:
     npx = shutil.which("npx")
     if npx is None:
         print("Warning: npx not found — skipping skills install. Run manually:")
-        print(f"  cd {repo_root} && npx skills add {skills_dir} --all -y")
+        print(f"  cd {repo_root} && npx skills add {skills_dir} --agent <your-agents> --skill '*' -y")
         return False
 
+    agents = detect_installed_agents(repo_root)
+    if not agents:
+        print("Warning: no supported agents detected — skipping skills install.")
+        print("Install manually with a specific agent flag, e.g.:")
+        print(f"  cd {repo_root} && npx skills add {skills_dir} --agent claude-code --skill '*' -y")
+        return False
+
+    agent_list = " ".join(agents)
     try:
         subprocess.run(
-            [npx, "skills", "add", str(skills_dir), "--all", "-y"],
+            [npx, "skills", "add", str(skills_dir), "--agent", *agents, "--skill", "*", "-y"],
             cwd=str(repo_root),
             check=True,
             timeout=60,
         )
+        print(f"Skills installed for agents: {agent_list}")
         return True
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
         print(f"Warning: skills install failed ({exc}). Run manually:")
-        print(f"  cd {repo_root} && npx skills add {skills_dir} --all -y")
+        print(f"  cd {repo_root} && npx skills add {skills_dir} --agent {agent_list} --skill '*' -y")
         return False
 
 

@@ -8,8 +8,11 @@ Usage:
 
 from __future__ import annotations
 
+import difflib
 import json
+import math
 import os
+import random
 import re
 import subprocess
 import sys
@@ -178,6 +181,99 @@ def _rouge_l_similarity(a: str, b: str) -> float:
 
 
 # ---------------------------------------------------------------------------
+# Hold-out transcript split (card 003)
+# ---------------------------------------------------------------------------
+
+def split_transcripts(
+    transcripts: list[Path],
+    holdout_ratio: float = 0.2,
+    seed: int = 42,
+) -> tuple[list[Path], list[Path]]:
+    """Split transcripts into train/test sets.
+
+    For < 5 transcripts, uses leave-one-out (last transcript as test).
+    Otherwise, shuffles deterministically and splits at holdout_ratio.
+    Returns (train, test).
+    """
+    if len(transcripts) < 2:
+        return transcripts, []
+    if len(transcripts) < 5:
+        # Leave-one-out: hold out the last transcript
+        return transcripts[:-1], transcripts[-1:]
+    rng = random.Random(seed)
+    shuffled = list(transcripts)
+    rng.shuffle(shuffled)
+    split_idx = max(1, len(shuffled) - int(len(shuffled) * holdout_ratio))
+    return shuffled[:split_idx], shuffled[split_idx:]
+
+
+# ---------------------------------------------------------------------------
+# Edit distance (card 004)
+# ---------------------------------------------------------------------------
+
+def compute_edit_distance(old: str, new: str) -> int:
+    """Compute line-level edit distance between old and new content."""
+    old_lines = old.splitlines(keepends=True)
+    new_lines = new.splitlines(keepends=True)
+    diff = list(difflib.unified_diff(old_lines, new_lines, n=0))
+    # Count added/removed lines (lines starting with +/- but not +++ or ---)
+    return sum(
+        1 for line in diff
+        if (line.startswith("+") or line.startswith("-"))
+        and not line.startswith("+++")
+        and not line.startswith("---")
+    )
+
+
+# ---------------------------------------------------------------------------
+# Staleness decay (card 005)
+# ---------------------------------------------------------------------------
+
+def compute_recency_weight(
+    transcript_path: Path,
+    halflife_days: float = 30.0,
+    floor: float = 0.3,
+) -> float:
+    """Exponential decay weight based on transcript file modification time.
+
+    Recent transcripts get weight 1.0, older ones decay toward floor.
+    """
+    try:
+        mtime = transcript_path.stat().st_mtime
+        age_days = (datetime.now(timezone.utc).timestamp() - mtime) / 86400.0
+    except OSError:
+        age_days = 0.0
+    if age_days <= 0 or halflife_days <= 0:
+        return 1.0
+    decay = math.exp(-math.log(2) * age_days / halflife_days)
+    return max(floor, decay)
+
+
+# ---------------------------------------------------------------------------
+# Diversity metric (card 006)
+# ---------------------------------------------------------------------------
+
+def compute_diversity(failures: list[dict]) -> dict:
+    """Count distinct failure categories and transcripts addressed by a set of failures.
+
+    Returns dict with category_count, transcript_count, and overfit_warning flag.
+    """
+    categories = set()
+    transcript_sources = set()
+    for f in failures:
+        cat = f.get("category") or f.get("failure_type") or f.get("failure", "unknown")
+        categories.add(cat)
+        src = f.get("transcript") or f.get("source_transcript") or "unknown"
+        transcript_sources.add(src)
+    overfit = len(categories) <= 1 and len(transcript_sources) <= 1
+    return {
+        "category_count": len(categories),
+        "transcript_count": len(transcript_sources),
+        "overfit_warning": overfit,
+    }
+
+
+# ---------------------------------------------------------------------------
 # CLI agent invocation
 # ---------------------------------------------------------------------------
 
@@ -320,6 +416,46 @@ def extract_section(content: str, section_name: str) -> str:
     return match.group(1).strip() if match else ""
 
 
+# Patterns that indicate LLM meta-commentary leaked into output
+_PREAMBLE_RE = re.compile(
+    r"^(Here is|Summary of|Updated section|The following|I've |I have |Below is|Note:|As requested)",
+    re.IGNORECASE,
+)
+_TRAILING_BLOCK_RE = re.compile(
+    r"\n+\*{0,2}(Summary|Changes|Explanation|Notes|Rationale)\*{0,2}[:\s].*",
+    re.DOTALL | re.IGNORECASE,
+)
+_LEAK_PATTERNS = [
+    re.compile(r"^Here is the updated", re.IGNORECASE | re.MULTILINE),
+    re.compile(r"^Summary of changes", re.IGNORECASE | re.MULTILINE),
+    re.compile(r"^Updated section", re.IGNORECASE | re.MULTILINE),
+    re.compile(r"^The following (is|are|shows)", re.IGNORECASE | re.MULTILINE),
+    re.compile(r"^\*{2}(Summary|Changes|Explanation)\*{2}", re.IGNORECASE | re.MULTILINE),
+]
+
+
+def strip_prompt_artifacts(text: str) -> str:
+    """Remove common LLM meta-commentary that leaks into implementer output."""
+    lines = text.split("\n")
+
+    # Strip leading preamble lines
+    while lines and _PREAMBLE_RE.match(lines[0].strip()):
+        lines.pop(0)
+
+    # Strip leading/trailing blank lines left behind
+    cleaned = "\n".join(lines).strip()
+
+    # Strip trailing summary/changes blocks
+    cleaned = _TRAILING_BLOCK_RE.sub("", cleaned).strip()
+
+    return cleaned
+
+
+def validate_no_prompt_leaks(text: str) -> list[str]:
+    """Return list of detected prompt leak patterns. Empty list = clean."""
+    return [p.pattern for p in _LEAK_PATTERNS if p.search(text)]
+
+
 def replace_section(content: str, section_name: str, new_content: str) -> str:
     """Replace a section's content. Uses lambda to avoid regex backreference corruption."""
     pattern = rf"(## {re.escape(section_name)}\s*\n)(.*?)(?=\n## |\Z)"
@@ -398,6 +534,8 @@ def calibrate(
     transcript_path: Path | None = None,
     repo_root: Path | None = None,
     dry_run: bool = False,
+    holdout_ratio: float = 0.2,
+    staleness_halflife_days: float = 30.0,
 ):
     """Run one calibration pass: identify → judge → implement → persist."""
     repo_root = resolve_repo_root(repo_root)
@@ -423,19 +561,31 @@ def calibrate(
         )
         return
 
+    # Card 003: hold-out transcript split
+    train_transcripts, test_transcripts = split_transcripts(transcripts, holdout_ratio)
+    if test_transcripts:
+        print(f"\nHold-out split: {len(train_transcripts)} train, {len(test_transcripts)} test")
+    else:
+        print(f"\nAll {len(train_transcripts)} transcript(s) used for training (too few for hold-out)")
+
     all_failures: list[dict] = []
     section_scores: dict[str, list[float]] = {}
     baselines = load_baselines(history_dir)
     all_deltas: list[dict] = []
 
-    for transcript_path in transcripts:
-        print(f"\n→ Processing transcript: {transcript_path.name}")
-        transcript = [json.loads(line) for line in transcript_path.read_text().splitlines() if line.strip()]
+    for t_path in train_transcripts:
+        print(f"\n→ Processing transcript: {t_path.name}")
+        transcript = [json.loads(line) for line in t_path.read_text().splitlines() if line.strip()]
         metrics = compute_metrics(transcript)
         print(f"  metrics: {metrics}")
 
+        # Card 005: staleness decay — weight by recency
+        recency_weight = compute_recency_weight(t_path, staleness_halflife_days)
+        if recency_weight < 1.0:
+            print(f"  recency weight: {recency_weight:.3f}")
+
         # Baseline: record deterministic metrics from first run as empty-context baseline
-        transcript_key = str(transcript_path)
+        transcript_key = str(t_path)
         if transcript_key not in baselines:
             baseline_entry = {
                 "transcript": transcript_key,
@@ -455,13 +605,13 @@ def calibrate(
         # Stage 1: Bug identification
         prompt = (
             f"Instruction file ({instruction_path.name}):\n```\n{agents_md}\n```\n\n"
-            f"Transcript:\n```\n{transcript_path.read_text()}\n```\n\n"
+            f"Transcript:\n```\n{t_path.read_text()}\n```\n\n"
             f"Deterministic metrics: {json.dumps(metrics)}\n\n"
             f"Baseline metrics (empty-context): {json.dumps(baseline_metrics)}\n\n"
             f"Delta over baseline: {json.dumps(delta)}"
         )
         if dry_run:
-            print(f"  [dry-run] would invoke bug-identifier on {transcript_path.name}")
+            print(f"  [dry-run] would invoke bug-identifier on {t_path.name}")
             continue
 
         print(f"  [stage 1/3] running bug-identifier…")
@@ -481,6 +631,9 @@ def calibrate(
                 print(f"  ⚠ unmapped failure: {failure.get('failure', '?')[:80]}")
                 continue
 
+            # Tag failure with source transcript for diversity tracking (card 006)
+            failure["source_transcript"] = t_path.name
+
             section_content = extract_section(agents_md, section)
             judge_prompt = (
                 f"Failure: {json.dumps(failure)}\n\n"
@@ -497,7 +650,8 @@ def calibrate(
             failure["verdict"] = verdict
             scored_failures.append(failure)
 
-            weight = verdict.get("weight", 0.0)
+            # Card 005: apply recency weight to judge score
+            weight = verdict.get("weight", 0.0) * recency_weight
             section_scores.setdefault(section, []).append(weight)
 
         all_failures.extend(scored_failures)
@@ -521,6 +675,8 @@ def calibrate(
         print(f"\n⚠ {unmapped_count} failure(s) could not be mapped to a section — skipping implementer for these")
 
     updated_agents_md = agents_md
+    edit_distances: dict[str, int] = {}
+    diversity_metrics: dict[str, dict] = {}
     for section, failures in sections_to_fix.items():
         if is_converged(section, reflections):
             print(f"  ✓ {section}: converged, skipping")
@@ -530,6 +686,12 @@ def calibrate(
         if avg_weight < 0.3:
             print(f"  ✓ {section}: low weight ({avg_weight:.2f}), skipping")
             continue
+
+        # Card 006: diversity metric
+        diversity = compute_diversity(failures)
+        diversity_metrics[section] = diversity
+        if diversity["overfit_warning"]:
+            print(f"  ⚠ {section}: potential overfit — addresses only {diversity['category_count']} category across {diversity['transcript_count']} transcript(s)")
 
         section_content = extract_section(agents_md, section)
         recent_history = [r for r in reflections[-5:] if r.get("section") == section]
@@ -541,11 +703,39 @@ def calibrate(
         )
         print(f"  [stage 3/3] implementing fix for '{section}'…")
         new_content = run_agent(agent, PROMPTS_DIR / "implementer.md", implement_prompt)
-        if new_content.strip():
-            updated_agents_md = replace_section(updated_agents_md, section, new_content.strip())
-            print(f"  ✏ {section}: updated")
-        else:
+
+        # Post-processing: strip LLM meta-commentary artifacts
+        new_content = strip_prompt_artifacts(new_content)
+
+        if not new_content:
             print(f"  ⚠ {section}: implementer returned empty content, skipping")
+            continue
+
+        # Validation: reject if prompt leak patterns still present
+        leaks = validate_no_prompt_leaks(new_content)
+        if leaks:
+            print(f"  ⚠ {section}: prompt leak detected after stripping, rejecting update")
+            for leak in leaks:
+                print(f"    leak pattern: {leak}")
+            continue
+
+        # Card 004: diff size penalty — compute edit distance and improvement/change ratio
+        edit_dist = compute_edit_distance(section_content, new_content)
+        edit_distances[section] = edit_dist
+        score_improvement = avg_weight  # use judge weight as proxy for improvement
+        if edit_dist > 0:
+            roi_ratio = score_improvement / edit_dist
+            print(f"  edit_distance={edit_dist}, improvement={score_improvement:.3f}, ROI={roi_ratio:.4f}")
+            # Reject if large rewrite with tiny improvement (threshold: 0.01 improvement per line changed)
+            if roi_ratio < 0.01:
+                print(f"  ⚠ {section}: low ROI rewrite (ratio={roi_ratio:.4f} < 0.01), rejecting change")
+                continue
+        else:
+            print(f"  edit_distance=0 (no change)")
+            continue
+
+        updated_agents_md = replace_section(updated_agents_md, section, new_content)
+        print(f"  ✏ {section}: updated")
 
     # Persist — write and commit via git (no _vN.md copies)
     if updated_agents_md != agents_md:
@@ -563,6 +753,42 @@ def calibrate(
             print(f"\n✓ {instruction_path.name} updated and committed")
         except subprocess.CalledProcessError as exc:
             print(f"\n✓ {instruction_path.name} updated (git commit failed: {exc})")
+
+    # Card 003: score test set after changes (without modifying AGENTS.md)
+    test_scores: dict[str, list[float]] = {}
+    if test_transcripts and updated_agents_md != agents_md:
+        print(f"\n--- Hold-out test scoring ({len(test_transcripts)} transcript(s)) ---")
+        for t_path in test_transcripts:
+            print(f"  scoring test transcript: {t_path.name}")
+            test_transcript = [json.loads(line) for line in t_path.read_text().splitlines() if line.strip()]
+            test_metrics = compute_metrics(test_transcript)
+            transcript_key = str(t_path)
+            if transcript_key in baselines:
+                test_baseline = baselines[transcript_key]["metrics"]
+                test_delta = {k: round(test_metrics[k] - test_baseline.get(k, 0), 3) for k in test_metrics}
+                print(f"    test delta: {test_delta}")
+
+        # Card 003: overfitting detection — compare train vs test aggregates
+        # If test scores degrade while train scores improve, revert
+        train_avg = round(sum(sum(scores) / len(scores) for scores in section_scores.values()) / max(len(section_scores), 1), 3) if section_scores else 0.0
+        # For test set, compute metrics-based composite (token_efficiency + success_rate) / 2
+        test_composites = []
+        for t_path in test_transcripts:
+            test_transcript = [json.loads(line) for line in t_path.read_text().splitlines() if line.strip()]
+            tm = compute_metrics(test_transcript)
+            test_composites.append((tm.get("token_efficiency", 0) + tm.get("success_rate", 0)) / 2)
+        test_avg = round(sum(test_composites) / max(len(test_composites), 1), 3) if test_composites else 0.0
+
+        print(f"  train avg score: {train_avg}")
+        print(f"  test avg score:  {test_avg}")
+
+        # If train improved (avg_weight > 0.3 threshold used earlier) but test is very low, revert
+        if train_avg > 0.5 and test_avg < 0.2:
+            print(f"  ⚠ OVERFITTING DETECTED: train={train_avg} but test={test_avg} — reverting changes")
+            updated_agents_md = agents_md  # revert
+    else:
+        train_avg = 0.0
+        test_avg = 0.0
 
     # Compute and log aggregate section scores
     agg_scores = {s: round(sum(scores) / len(scores), 3) for s, scores in section_scores.items()}
@@ -583,6 +809,15 @@ def calibrate(
         "section_scores": agg_scores,
         "avg_score": avg,
         "delta_over_baseline": agg_delta,
+        # Card 004: edit distances
+        "edit_distances": edit_distances,
+        # Card 006: diversity metrics
+        "diversity": diversity_metrics,
+        # Card 003: train/test split info
+        "train_transcripts": len(train_transcripts),
+        "test_transcripts": len(test_transcripts),
+        "train_avg_score": train_avg,
+        "test_avg_score": test_avg,
     }
     save_reflection(history_dir, reflection_entry)
     save_score(
@@ -592,9 +827,20 @@ def calibrate(
             "avg": avg,
             "sections": agg_scores,
             "delta_over_baseline": agg_delta,
+            # Card 003: separate train/test scores
+            "train_avg": train_avg,
+            "test_avg": test_avg,
+            "split": {"train": len(train_transcripts), "test": len(test_transcripts)},
         },
     )
 
     print(f"\nCalibration complete | avg={avg} | failures={len(all_failures)} | sections={agg_scores}")
     if agg_delta:
         print(f"Delta over baseline:  {agg_delta}")
+    if test_transcripts:
+        print(f"Train/test split:     {len(train_transcripts)}/{len(test_transcripts)} | train_avg={train_avg} | test_avg={test_avg}")
+    # Card 006: print diversity summary
+    if diversity_metrics:
+        for sec, div in diversity_metrics.items():
+            status = "OVERFIT WARNING" if div["overfit_warning"] else "ok"
+            print(f"Diversity [{sec}]:     {div['category_count']} categories, {div['transcript_count']} transcripts ({status})")

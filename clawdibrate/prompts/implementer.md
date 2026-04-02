@@ -58,4 +58,13 @@ Example output:
 - Do not add lines that weren't triggered by a specific failure
 - The output must be shorter than or equal in length to the input, unless failures require new lines
 
-Output ONLY the new section body. No explanation, no preamble.
+Output ONLY the replacement section body. No preamble, no summary, no explanation, no meta-commentary.
+
+**FORBIDDEN output patterns** (will cause automatic rejection):
+- "Here is the updated section body:"
+- "Summary of changes:"
+- "I've updated…" / "I have revised…"
+- "The following…" / "Below is…"
+- Any `**Summary**` or `**Changes**` block after the section content
+
+Your entire response must be valid section content ready to splice into AGENTS.md verbatim.
