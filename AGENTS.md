@@ -29,7 +29,6 @@ Calibration shells out to local agent CLIs (use each tool's usual login). Cursor
 **Agent env:** `python -m clawdibrate` loads `repo/.clawdibrate/env` when present (see `clawdibrate.env.example`); parsed keys do not override variables already in the process environment. If that file is missing and `repo/.env` exists, only keys prefixed with `CLAWDIBRATE_` are merged. Set `CLAWDIBRATE_AGENT` to pick the default calibration CLI when `--agent` is omitted (e.g. `cursor` in IDE tasks).
 
 Built-in agents (set via `--agent`, default from `CLAWDIBRATE_AGENT` or `claude`):
-- `cursor` — `cursor agent --print --force` (headless); workers inherit full `os.environ` (`CURSOR_API_KEY`, etc.)
 - `claude` — `claude -p "{prompt}" --dangerously-skip-permissions`
 - `codex` — `codex exec --full-auto "{prompt}"`
 - `opencode` — `opencode --prompt "{prompt}"`
@@ -50,9 +49,7 @@ Runtime: Python 3.10+ for `python -m clawdibrate`. Node.js (see `.tool-versions`
 
 ```bash
 python -m clawdibrate                              # calibrate from recorded transcripts
-python -m clawdibrate --agent cursor               # Cursor Agent CLI (or use .clawdibrate/env)
 python -m clawdibrate --agent codex                # use codex as the calibration agent
-python -m clawdibrate --no-auto-section-skills     # calibrate only; do not auto-create section skills / npx
 python -m clawdibrate --transcript path/to.jsonl   # calibrate from one transcript
 python -m clawdibrate --dry-run                    # inspect the run without editing AGENTS.md
 ```
@@ -69,7 +66,7 @@ Slash commands route to `SKILL.md` files in `src/skills/`. All skills use the `c
 
 **Interface:** Every skill must have `name` (with `clawdbrt:` prefix) and `description` in frontmatter. The body is agent instructions.
 
-**Canonical source:** `src/skills/` is source of truth. `skills/` and `.agents/skills/` are install outputs — never edit them directly, but always commit them.
+**Canonical source:** `src/skills/` is source of truth. `skills/` and `.agents/skills/` are install outputs — never edit them directly, but always commit them. **Always use `src/skills/` in all references — never `skills/`, `.agents/skills/`, or other variants.**
 
 **All new capabilities must be implemented as skills.** The loop, kanban, feature generation, and implementation are all skills — not standalone scripts.
 
@@ -81,8 +78,6 @@ Slash commands route to `SKILL.md` files in `src/skills/`. All skills use the `c
 - `/clawdbrt:scores` — show calibration scoreboard for a repo or all tracked repos (`src/skills/scores/SKILL.md`)
 
 **Section skills:** When a section scores below 0.7 across 3+ runs, or has churn ≥ 3 in git history, create a dedicated skill for it. Name it after the section: `src/skills/<kebab-section-name>/SKILL.md`. The skill body is the expanded, step-by-step version of the rule — more context than fits in the instruction file. Reference it from the section: `See /clawdbrt:<skill-name> for detailed guidance.` This externalizes complexity without bloating the instruction file.
-
----
 
 
 ## Bootstrap Transcript Calibrator
@@ -122,30 +117,27 @@ Reference implementation: latest `docs/vX_Y_Z/README.md` and `clawdibrate/orches
 
 ## Boundaries
 
-- ✅ Always: use the latest `docs/vX_Y_Z/` directory first for specs, kanban, and references — only fall back to older versions if the file is missing from the current version
-- ✅ Always: inject current AGENTS.md as system prompt when running transcript calibration
-- ✅ Always: save each version as `.clawdibrate/iterations/AGENTS_vN.md` before overwriting (never in the repo root)
-- ✅ Always: track `reflection_history` across all iterations (episodic memory)
-- ✅ Always: route failures to the specific section responsible, not the whole document
-- ✅ Always: `git commit` immediately after every version update — no uncommitted versions
-- ✅ Always: complete `docs/vX_Y_Z/README.md` before committing a version — no commit without README
-- ✅ Always: create/edit skills in `src/skills/{name}/SKILL.md`, then run `npx skills add ./src/skills --agent <detected-agents> --skill '*' -y`
-- ✅ Always: spawn parallel agents for independent kanban cards — do not work them sequentially
-- ✅ Always: when an agent is spawned to read/explore files, do not also read those same files in the main thread
-- ✅ Always: follow version workflow: SPEC.md → kanban cards → copy icebox from prior version → work cards → README.md → CHANGELOG.md → bump version → commit
-- ✅ Always: `/clawdbrt:loop` calibrates from transcripts. `/clawdbrt:add-new-features` bumps MINOR only. MAJOR requires explicit human decision.
-- ✅ Always: before implementing any capability, check if an installed tool already does it — read its docs first
-- ✅ Always: ticket filenames use `clwdi-v{MAJOR}_{MINOR}_{PATCH}-{NNN}.md`. Moving a ticket renames it to the target version prefix. Each new version's kanban copies the prior version's `icebox.md`.
-- ⚠️ Ask first: adding new task types to the evaluation suite
-- ⚠️ Ask first: changing the judge scoring threshold below 0.7
-- 🚫 Never: rewrite sections already converged (score ≥ 0.95 across 3+ iterations)
-- 🚫 Never: remove the Boundaries section
-- 🚫 Never: make this file longer than it currently is without explicit instruction
-- 🚫 Never: use markdown checklists or TaskCreate tools for work tracking — use `docs/vX_Y_Z/kanban/` cards
-- 🚫 Never: edit files in `skills/`, `.agents/`, or agent-specific skill dirs directly — `src/skills/` is source of truth
-- 🚫 Never: auto-bump MAJOR version — requires explicit human decision
-
----
+- ✅ Use latest `docs/vX_Y_Z/` first, fall back only if missing
+- ✅ Inject AGENTS.md as system prompt for calibration
+- ✅ Save versions to `.clawdibrate/iterations/AGENTS_vN.md`
+- ✅ Track `reflection_history` across iterations
+- ✅ Route failures to responsible sections
+- ✅ `git commit` after version updates (atomic commits)
+- ✅ Complete `docs/vX_Y_Z/README.md` before commit
+- ✅ Edit `src/skills/{name}/SKILL.md` then `npx skills add ./src/skills --agent <detected-agents> --skill '*' -y`
+- ✅ Spawn parallel agents for independent kanban cards
+- ✅ Don't duplicate file reads between main thread and spawned agents
+- ✅ Version workflow: SPEC.md → kanban → copy icebox → work cards → README.md → CHANGELOG.md → bump → commit
+- ✅ `/clawdbrt:loop` calibrates, `/clawdbrt:add-new-features` MINOR only, MAJOR needs human approval
+- ✅ Check existing tools before implementing
+- ✅ Tickets: `clwdi-v{MAJOR}_{MINOR}_{PATCH}-{NNN}.md`, rename when moving versions, copy `icebox.md`
+- ⚠️ Ask: new evaluation tasks, judge threshold <0.7
+- 🚫 Don't rewrite converged sections (≥0.95 score)
+- 🚫 Don't remove Boundaries section
+- 🚫 Don't lengthen file without instruction
+- 🚫 Use kanban cards, not markdown checklists/TaskCreate
+- 🚫 Don't edit `skills/`/`.agents/` directly — `src/skills/` is source
+- 🚫 Don't auto-bump MAJOR
 
 
 ## Known Gotchas
