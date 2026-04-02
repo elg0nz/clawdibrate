@@ -837,10 +837,6 @@ def _materialize_section_skills(
 ) -> None:
     """Write SKILL.md files, replace sections with pointers, run ``npx skills add``, git commit."""
     skills_src = repo_root / "src" / "skills"
-    if not skills_src.parent.is_dir():
-        print("\n⚠ auto section-skills: no src/skills parent — skipping")
-        return
-
     skills_src.mkdir(parents=True, exist_ok=True)
     try:
         body = instruction_path.read_text(encoding="utf-8")
