@@ -1,6 +1,6 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.12.1** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.12.2** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **PATCH** = backward-compatible fixes (wording, tuning). **MINOR** = new backward-compatible functionality (new sections, commands, skills). **MAJOR** = incompatible changes to the calibration loop contract or CLI interface.
 >
@@ -51,22 +51,21 @@ Extract section to `src/skills/<kebab>/SKILL.md` when score <0.7 (3+ runs) or ch
 
 ## Bootstrap Transcript Calibrator
 
-Transcript pipeline: `transcript → metrics → bug-identifier → judge → implementer → section-scoped edits → new AGENTS.md`
+Pipeline: `transcript → metrics → bug-identifier → judge → implementer → section-scoped edits → new AGENTS.md`
 
-**Specs:** Use latest `docs/vX_Y_Z/specs/`; fallback to older. Ref: latest `docs/vX_Y_Z/README.md` + `clawdibrate/orchestrator.py`
+**Specs:** Latest `docs/vX_Y_Z/specs/` (fallback older). Ref: `docs/vX_Y_Z/README.md` + `clawdibrate/orchestrator.py`
 
 **Pre-analysis:** Verify transcript completeness + AGENTS.md ends properly. STOP if truncated.
 
-**AGENTS.md boundary:** Injected as system prompt — Read in full only, never with offset/limit.
+**AGENTS.md:** System-prompt injected — Read in full only, never with offset/limit.
 
 **Rules:**
-- Flag high-churn sections (≥3 edits) before editing
-- File reads: Read tool only (offset/limit ok except AGENTS.md); no `cat`/`head`/`sed -n` via Bash
-- File discovery: Glob only; content search: Grep only — no `find`/`grep` via Bash
+- Reads: Read tool; discovery: Glob tool; search: Grep tool; line ranges: Read offset/limit — never `cat`/`head`/`sed`/`awk`/`find`/`grep` via Bash
+- Flag sections with ≥3 edits before editing
 - >3 files: single batched agent OR parallel tool calls
-- Delegate exploration OR read directly — never both for same files
-- Always Read before Edit; on success never re-edit without re-reading
-- Shell commands: Shell tool only — never markdown code blocks
+- Explore OR read directly — never both for same files
+- Always Read before Edit; on Edit failure Read again before retry — never retry without intervening Read
+- Shell: Shell tool only — never markdown code blocks
 - Output: complete valid JSON with all required fields
 
 
@@ -77,14 +76,14 @@ Transcript pipeline: `transcript → metrics → bug-identifier → judge → im
 
 ## Boundaries
 
-- Use latest `docs/vX_Y_Z/`; fallback to older
-- Inject AGENTS.md as system prompt; save `.clawdibrate/iterations/AGENTS_vN.md` before overwrite; track `reflection_history`; route failures to specific section
-- Flow: SPEC.md → kanban → icebox → cards → README.md → CHANGELOG.md → bump → commit
-- Version bump atomic: `pyproject.toml` + `AGENTS.md` header + `CHANGELOG.md`; use `/clawdbrt:bump-version` if exists; `git commit` after
-- Skills: `src/skills/{name}/SKILL.md` → `npx skills add ./src/skills --agent <agents> --skill '*' -y --global`
-- Tickets: `clwdi-v{MAJOR}_{MINOR}_{PATCH}-{NNN}.md`; rename on move; copy `icebox.md`
-- Spawn parallel agents for independent kanban cards; don't read files if agent spawned to read them
-- `/clawdbrt:loop`=PATCH calibration; `/clawdbrt:add-new-features`=MINOR only; MAJOR needs approval
+- Use latest `docs/vX_Y_Z/`; fallback older
+- Inject AGENTS.md as system prompt; save `.clawdibrate/iterations/AGENTS_vN.md` before overwrite; track `reflection_history`; route failures to section
+- Flow: SPEC.md→kanban→icebox→cards→README.md→CHANGELOG.md→bump→commit
+- Version bump atomic: `pyproject.toml`+`AGENTS.md` header+`CHANGELOG.md`; use `/clawdbrt:bump-version` if exists; commit after
+- Skills: `src/skills/{name}/SKILL.md`→`npx skills add ./src/skills --agent <agents> --skill '*' -y --global`
+- Tickets: `clwdi-v{MAJ}_{MIN}_{PAT}-{NNN}.md`; rename on move; copy `icebox.md`
+- Spawn parallel agents for independent cards; don't read files if agent spawned for that
+- `/clawdbrt:loop`=PATCH; `/clawdbrt:add-new-features`=MINOR; MAJOR needs approval
 - Ask first: new eval types, judge <0.7
 - Never: rewrite converged (≥0.95, 3+ iter), remove Boundaries, add lines without instruction, use checklists/TaskCreate, edit `skills/`/`.agents/` directly, auto-bump MAJOR
 - Check tools before implementing
@@ -127,5 +126,5 @@ After every calibration run, log to stdout and append to these files:
 
 ## Landing the Plane (Session Completion)
 
-`/clawdbrt:landing-the-plane-session-completion` handles all commits. Never run `git add/commit/push` manually.
+`/clawdbrt:landing-the-plane-session-completion` handles all commits. Never run `git add/commit/push` manually — not even at session end. If the skill was already invoked, do not fall back to raw git commands.
 
