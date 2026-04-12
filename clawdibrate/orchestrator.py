@@ -21,11 +21,12 @@ import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, cast, TypedDict
+from typing import Any, TypedDict, cast
 
 from .instruction_files import detect_instruction_file
-from .tokens import count_tokens, count_file_tokens, count_section_tokens
 from .ralph import fan_out
+from .tokens import count_file_tokens, count_section_tokens, count_tokens
+
 
 class _FileTokens(TypedDict):
     total: int

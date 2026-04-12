@@ -1083,7 +1083,7 @@ class TestScoresChart:
 
     def test_scores_no_data(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         """Missing scores file prints 'No scores found'."""
-        from clawdibrate.__main__ import _show_scores
+        from clawdibrate.scores import show_scores as _show_scores
 
         repo = tmp_path / "repo"
         repo.mkdir()
@@ -1095,7 +1095,7 @@ class TestScoresChart:
 
     def test_scores_no_data_empty_file(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         """Scores file that exists but is empty also prints 'No scores found'."""
-        from clawdibrate.__main__ import _show_scores
+        from clawdibrate.scores import show_scores as _show_scores
 
         repo = tmp_path / "repo"
         history_dir = repo / ".clawdibrate" / "history"
@@ -1109,7 +1109,7 @@ class TestScoresChart:
 
     def test_scores_with_data(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         """Writes sample score entries and verifies table + sparkline chars appear."""
-        from clawdibrate.__main__ import _show_scores, _SPARK_CHARS
+        from clawdibrate.scores import show_scores as _show_scores, _SPARK_CHARS
 
         repo = tmp_path / "repo"
         history_dir = repo / ".clawdibrate" / "history"
@@ -1177,7 +1177,7 @@ class TestIdempotencyCheck:
 
     def test_pass_when_second_run_unchanged(self, tmp_path: Path) -> None:
         """Exit 0 when calibrate returns changed=False on second run."""
-        from clawdibrate.__main__ import _run_idempotency_check
+        from clawdibrate.modes import run_idempotency_check as _run_idempotency_check
 
         args = self._make_args(tmp_path)
 
@@ -1185,18 +1185,16 @@ class TestIdempotencyCheck:
         run2_result = {"changed": False, "edit_distances": {"Known Gotchas": 0}}
 
         with (
-            patch("clawdibrate.__main__.calibrate", side_effect=[run1_result, run2_result]),
-            patch("clawdibrate.__main__.load_clawdibrate_env"),
-            patch("clawdibrate.__main__.resolve_default_calibration_agent", return_value="claude"),
+            patch("clawdibrate.modes.calibrate", side_effect=[run1_result, run2_result]),
             pytest.raises(SystemExit) as exc_info,
         ):
-            _run_idempotency_check(args)
+            _run_idempotency_check(args, "claude")
 
         assert exc_info.value.code == 0
 
     def test_fail_when_second_run_changed(self, tmp_path: Path) -> None:
         """Exit 1 when calibrate returns changed=True on second run."""
-        from clawdibrate.__main__ import _run_idempotency_check
+        from clawdibrate.modes import run_idempotency_check as _run_idempotency_check
 
         args = self._make_args(tmp_path)
 
@@ -1204,23 +1202,21 @@ class TestIdempotencyCheck:
         run2_result = {"changed": True, "edit_distances": {"Known Gotchas": 2}}
 
         with (
-            patch("clawdibrate.__main__.calibrate", side_effect=[run1_result, run2_result]),
-            patch("clawdibrate.__main__.load_clawdibrate_env"),
-            patch("clawdibrate.__main__.resolve_default_calibration_agent", return_value="claude"),
+            patch("clawdibrate.modes.calibrate", side_effect=[run1_result, run2_result]),
             pytest.raises(SystemExit) as exc_info,
         ):
-            _run_idempotency_check(args)
+            _run_idempotency_check(args, "claude")
 
         assert exc_info.value.code == 1
 
     def test_error_when_no_transcript(self, tmp_path: Path) -> None:
         """Exit 1 with error message when --transcript is not provided."""
-        from clawdibrate.__main__ import _run_idempotency_check
+        from clawdibrate.modes import run_idempotency_check as _run_idempotency_check
 
         args = self._make_args(tmp_path)
         args.transcript = None
 
         with pytest.raises(SystemExit) as exc_info:
-            _run_idempotency_check(args)
+            _run_idempotency_check(args, "claude")
 
         assert exc_info.value.code == 1

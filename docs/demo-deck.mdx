@@ -6,11 +6,12 @@ date: 2026-04-02
 
 # The problem with AGENTS.md
 
-LLM-generated instruction files make agents **worse**.
+LLM-generated instruction files often make agents **worse**.
 
-- -2% task success, +20% inference cost (arxiv.org/abs/2602.11988, 138 repos, 4 agents)
-- Auto-generated files duplicate README content and add noisy constraints
-- No feedback loop — nobody measures whether the file is actually helping
+According to research:
+- -2% task success, +20% inference cost (Evaluating AGENTS.md: arxiv.org/abs/2602.11988, 138 repos, 4 agents)
+- Auto-generated files often duplicate content and add noisy constraints
+- Most tools don't provide a feedback loop. Both agents and users make edits without baselines
 
 **The missing piece isn't better generation. It's measurement.**
 
@@ -18,25 +19,47 @@ LLM-generated instruction files make agents **worse**.
 
 # My framing of "better"
 
-> "Better" means the rewritten instruction file reduces token waste, search waste ratio, correction rate, and repetition score while maintaining or improving task success rate.
+> "Better" means the rewritten instruction file:
+> a. reduces token waste
+> b. lowers the search waste ratio
+> c. improves the correction rate and repetition scores
+> while maintaining or improving task success rates.
+
+---
+
+# My framing of "better" — tradeoffs
 
 **What this excludes:** aesthetics and readability. A terse, ugly file that prevents agent flailing beats a beautiful one that doesn't change behavior.
 
 **The tradeoff is deliberate:** optimize for efficiency while holding success constant. Not just "did it work" but "did it work without flailing."
 
+**Why this framing:** I needed a definition that was measurable and falsifiable. "The agent behaves better" isn't testable. "The agent uses fewer tokens and gets corrected less often" is.
+
 ---
 
-# Research → Design, not the other way around
+# Research → Design: the papers
 
-Started with a Perplexity deep-dive to survey the landscape. Each paper read in full, specific findings mapped to design decisions.
+Each paper read in full, specific findings mapped to design decisions.
 
-| Paper | Key Finding | What It Became |
-|---|---|---|
-| **AgentBench** (Liu et al., 2023) | TLE is dominant failure (24.9%–36.9%). All 8 envs use deterministic eval. | Deterministic-first scoring. Repetition detection via Rouge-L. |
-| **Reflexion** (Shinn, NeurIPS 2023) | Verbal critiques >> scalar rewards (+22pp AlfWorld) | Bug-identifier outputs critiques, not scores |
-| **RISE** (Qu et al., 2024) | Self-correction as multi-turn MDP (+23.9%) | Each iteration builds on the last, not restarts |
-| **RLMs** (Zhang et al., Dec 2025) | Recursive decomposition of long inputs | Failures route to specific sections, not the full file |
-| **Evaluating AGENTS.md** (2026) | LLM-generated files hurt; bloat = cost | Token efficiency is highest-weighted metric (0.40) |
+| Paper | Key Finding |
+|---|---|
+| **AgentBench** (Liu et al., 2023) | TLE is dominant failure (24.9%–36.9%). All 8 envs use deterministic eval. |
+| **Reflexion** (Shinn, NeurIPS 2023) | Verbal critiques >> scalar rewards (+22pp AlfWorld) |
+| **RISE** (Qu et al., 2024) | Self-correction as multi-turn MDP (+23.9%) |
+| **RLMs** (Zhang et al., Dec 2025) | Recursive decomposition of long inputs |
+| **Evaluating AGENTS.md** (2026) | LLM-generated files hurt; bloat = cost |
+
+---
+
+# Research → Design: what each became
+
+| Paper | What It Became |
+|---|---|
+| **AgentBench** | Deterministic-first scoring. Repetition detection via Rouge-L. |
+| **Reflexion** | Bug-identifier outputs critiques, not scores |
+| **RISE** | Each iteration builds on the last, not restarts |
+| **RLMs** | Failures route to specific sections, not the full file |
+| **Evaluating AGENTS.md** | Token efficiency is highest-weighted metric (0.40) |
 
 Also explored: DSPy MIPROv2, OPRO, TextGrad — informed the design space but not primary.
 
@@ -45,6 +68,12 @@ Also explored: DSPy MIPROv2, OPRO, TextGrad — informed the design space but no
 # Five deterministic metrics
 
 Three design constraints: **measurable, deterministic, generalizable.**
+
+An LLM judge could score everything — but then the same transcript produces different scores on different runs. Deterministic metrics are the foundation; the LLM only handles what numbers can't.
+
+---
+
+# The scoring formula
 
 | Metric | What It Measures |
 |---|---|
@@ -76,7 +105,13 @@ transcript → deterministic metrics → bug-identifier → judge → implemente
 4. **Judge** fixability — LLM only for what deterministic metrics can't capture
 5. **Implement** section-scoped edits — targeted, not full-document rewrites
 
+---
+
+# Pipeline tradeoffs
+
 Three loop modes: `--mode fast` (single pass), `--mode progressive` (cancel-safe iterations), `--mode max --target-score 0.9` (run until plateau).
+
+**The design tradeoff:** each stage uses the cheapest tool that works. Deterministic metrics run in milliseconds. The LLM judge is the bottleneck — but it only fires for failures the numbers can't explain. This keeps the loop fast enough to iterate on.
 
 ---
 
@@ -84,15 +119,15 @@ Three loop modes: `--mode fast` (single pass), `--mode progressive` (cancel-safe
 
 A feature-rich Python CLI with complex subcommand patterns, plugin architecture via pluggy, and non-discoverable conventions.
 
-**Why this repo:** FTS shadow tables, SQLite ALTER TABLE workarounds, Click decorator chains, 146-function monolith `db.py` — all things an agent won't infer without explicit guidance.
+**Why this repo:** This tool exposes complex operations like: FTS shadow tables, SQLite ALTER TABLE workarounds, Click decorator chains, 146-function monolith `db.py`. This repo is full of details an agent often won't infer without explicit guidance.
 
 ---
 
-# Before / After
+# Before / After — the numbers
 
 **Same task, same model:** "Create a database with essays from Paul Graham and Sam Altman, enable fulltext search."
 
-![Before/After comparison](before-after-sqlite-utils.png)
+![Before/After comparison](../before-after-sqlite-utils.png)
 
 | | With AGENTS.md | Without AGENTS.md |
 |---|---|---|
@@ -102,7 +137,13 @@ A feature-rich Python CLI with complex subcommand patterns, plugin architecture 
 | **Time** | ~30s | 3m 32s |
 | **Convention adherence** | CLI from the start | Mixed Python/CLI, even after correction |
 
+---
+
+# Before / After — what it proves
+
 The agent without AGENTS.md defaulted to the Python library, got corrected, and **still used the Python library**. A boundary violation — exactly the failure mode clawdibrate detects.
+
+**How I evaluated this:** not "does it work" but "does it work *the right way, without help*." The correction being ignored is the strongest signal — it means the instruction file's absence caused a behavior the agent couldn't self-correct.
 
 ---
 
@@ -112,7 +153,13 @@ The agent without AGENTS.md defaulted to the Python library, got corrected, and 
 
 **The fix:** single-pass, best-effort. Dampening by removing the loop entirely.
 
-**Pipeline latency.** Deterministic metrics compute in milliseconds. The LLM judge step is the bottleneck. Measurement is fast; reasoning is slow. Haven't solved this — tradeoff between judgment quality and iteration speed.
+---
+
+# What didn't work — pipeline latency
+
+**Pipeline latency.** Deterministic metrics compute in milliseconds. The LLM judge step is the bottleneck. Measurement is fast; reasoning is slow.
+
+Haven't solved this — tradeoff between judgment quality and iteration speed.
 
 ---
 
@@ -124,19 +171,23 @@ An agent that runs 5 searches might be lost (waste) or methodically narrowing (g
 
 **The gap:** counting tool calls vs. understanding tool call *strategies*. This is why Tier 2 (LLM judge) exists — but it's a blunt instrument for a nuanced problem.
 
-**With more time:** trajectory-level analysis of session data. Understanding what the agent was *trying to do* across multi-step spans, not just what it did.
+---
+
+# With more time
+
+Trajectory-level analysis of session data. Understanding what the agent was *trying to do* across multi-step spans, not just what it did.
 
 ---
 
-# What's next
+# What's next — and why in this order
 
-1. **Deeper session pattern matching** — intent sequence analysis, not just event counting. Front-load this work.
-2. **Multi-platform validation** — current parsing tested on Claude Code only. Architecture supports pluggable parsers for Codex, Cursor, OpenCode. Ship and test them.
-3. **The convergence question** — does running clawdibrate N times on the same transcript converge or oscillate? Need systematic stability testing.
+1. **Deeper session pattern matching** — intent sequence analysis, not just event counting. This is the biggest evaluation gap. Front-load this.
+2. **Multi-platform validation** — current parsing tested on Claude Code only. Architecture supports pluggable parsers for Codex, Cursor, OpenCode.
+3. **The convergence question** — does running clawdibrate N times converge or oscillate? I observed oscillation in compression and fixed it. Need systematic stability testing.
 
 ---
 
-# The generated AGENTS.md
+# The generated AGENTS.md — structure
 
 ```markdown
 # sqlite-utils AGENTS.md
@@ -144,52 +195,33 @@ An agent that runs 5 searches might be lost (waste) or methodically narrowing (g
 > **Version: 0.1.0**
 
 ## Identity
-
 You are a contributor to sqlite-utils, a Python CLI utility and library
-for manipulating SQLite databases. The project is maintained by Simon Willison
-and has 47 test files with 11k+ lines of tests. The codebase uses Click for CLI,
-has a plugin system via pluggy, and supports full-text search, GIS,
-and table transformations.
+for manipulating SQLite databases.
 
 ## Architecture
+- sqlite_utils/db.py — core Database/Table classes (~146 functions)
+- sqlite_utils/cli.py — Click CLI commands (~80 commands)
+- sqlite_utils/utils.py — shared helpers
+- sqlite_utils/plugins.py — pluggy hook system
+```
 
-- `sqlite_utils/db.py` — core Database/Table classes (~146 functions).
-  All SQL operations live here.
-- `sqlite_utils/cli.py` — Click CLI commands (~80 commands).
-  Thin layer that delegates to `db.py`.
-- `sqlite_utils/utils.py` — shared helpers.
-- `sqlite_utils/plugins.py` — pluggy hook system.
-- `sqlite_utils/recipes.py` — built-in transformation recipes.
-- `tests/` — 47 test files, pytest-based. `conftest.py` has shared fixtures.
+---
 
+# The generated AGENTS.md — guardrails
+
+```markdown
 ## Known Gotchas
-
 - Large db.py: 146 functions in one file. Read the whole file before editing.
-- Click decorators: stacked @click.option decorators. Changing one can break
-  the chain.
-- SQLite ALTER TABLE limits: Many operations use "create new table, copy data,
-  drop old" pattern in transform().
-- FTS: Full-text search uses sqlite_fts4 with BM25 ranking. FTS tables have
-  shadow tables — don't drop them directly.
-- Type coercion: suggest_column_types() infers types from data samples.
-  It can be wrong on mixed-type columns.
-- Plugin hooks: Uses pluggy's hookspecs.py. New hooks need both the spec
-  and the implementation.
+- FTS shadow tables — don't drop them directly.
+- Click decorators: stacked @click.option decorators.
 
 ## Boundaries
-
-- Run `pytest tests/` before committing any changes.
-- Don't modify test fixtures in conftest.py without checking all 47 test files.
+- Run pytest tests/ before committing any changes.
 - The CLI is the public API — breaking changes need deprecation paths.
-- db.py classes (Database, Table, View) are also public API — method signatures
-  are stable.
 
 ## Commands
-
 pytest tests/                       # full test suite
 pytest tests/test_cli.py -x         # CLI tests (largest file)
-pytest tests/test_create.py -x      # table creation tests
-pytest tests/test_transform.py -x   # schema transformation tests
 sqlite-utils --help                 # CLI reference
 ```
 

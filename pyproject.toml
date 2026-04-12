@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "clawdibrate"
-version = "0.12.0"
+version = "0.13.0"
 description = "Transcript-based AGENTS.md calibration"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -15,6 +15,23 @@ dependencies = ["tiktoken"]
 
 [project.scripts]
 clawdibrate = "clawdibrate.__main__:main"
+
+[project.optional-dependencies]
+dev = ["pytest", "mypy", "ruff"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = false
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
 
 [tool.setuptools]
 include-package-data = true

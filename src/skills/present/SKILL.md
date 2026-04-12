@@ -60,6 +60,8 @@ When the user types `/clawdbrt:present` or asks to present, rehearse, or run thr
 
 Generate 2–4 sentences per slide. Punchy, conversational — like a coach whispering what to emphasize. Tell the presenter what to *stress*, not what the slide already says. Wrap lines at ~45 characters.
 
+**Core framing:** The audience cares about reasoning, tradeoffs, and evaluation approach — not the artifact. Every slide's notes should coach the presenter to lead with *why this choice* and *what was traded away*, not *what it does*. If a slide shows a result, the notes should say what the result *proves about the evaluation approach*.
+
 ## Critical Rules
 
 - **ONE slide at a time.** Never print multiple slides in one response.

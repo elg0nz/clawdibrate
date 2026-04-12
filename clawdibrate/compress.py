@@ -6,7 +6,7 @@ import re
 import tempfile
 from pathlib import Path
 
-from .tokens import count_tokens, count_section_tokens
+from .tokens import count_section_tokens, count_tokens
 
 # Common bloat patterns: (regex, replacement_hint)
 PATTERNS: list[dict[str, str]] = [

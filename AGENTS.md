@@ -1,6 +1,6 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.12.3** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.13.0** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **PATCH** = backward-compatible fixes (wording, tuning). **MINOR** = new backward-compatible functionality (new sections, commands, skills). **MAJOR** = incompatible changes to the calibration loop contract or CLI interface.
 >
@@ -33,6 +33,8 @@ npx skills add ./src/skills --agent claude-code cursor codex --skill '*' -y --gl
 **Custom:** `CLAWDIBRATE_AGENT_CMD='llm -s "$(cat {system_prompt})" {prompt}'`
 
 **Runtime:** Python 3.10+, Node.js
+
+**Package manager:** `uv` — never use `pip install`. Use `uv add` for deps, `uv run` to execute (e.g. `uv run pytest`).
 
 
 ## Commands
