@@ -108,14 +108,71 @@ transcript.jsonl
 
 | Module | Role |
 |--------|------|
-| `orchestrator.py` | Core loop: `calibrate()`, `compute_metrics()`, `split_transcripts()` |
-| `__main__.py` | CLI argument parsing, mode routing |
+| `orchestrator.py` | Core calibration pipeline (see function map below) |
+| `cli.py` | `build_parser()` — argparse setup |
+| `modes.py` | `resolve_mode_defaults()`, `run_progressive_mode()`, `run_max_mode()`, `run_idempotency_check()`, `list_transcripts()` |
+| `scores.py` | `sparkline()`, `show_scores()` — score history display |
+| `__main__.py` | Thin `main()` dispatcher |
 | `instruction_files.py` | `detect_instruction_file()`, `ensure_clawdibrate_setup()`, `_install_bundled_skills()` |
 | `session_dump.py` | Parse `~/.claude/projects/<mangled-path>/*.jsonl` → structured transcripts |
 | `git_history.py` | Bootstrap synthetic transcripts from git history |
 | `ralph.py` | `fan_out()` thread pool for parallel multi-agent runs |
 | `tokens.py` | `count_tokens()` using tiktoken cl100k_base |
 | `env_bootstrap.py` | Load `.clawdibrate/env` then `.env` (CLAWDIBRATE_* keys only) |
+
+### orchestrator.py function map
+
+**Metrics & analysis:**
+| Function | Line | Purpose |
+|----------|------|---------|
+| `compute_metrics()` | :102 | Deterministic Tier-1 metrics from transcript (token efficiency, search waste, correction rate, repetition, success) |
+| `_rouge_l_similarity()` | :214 | Approximate Rouge-L for repetition detection |
+| `split_transcripts()` | :242 | Train/test split with recency weighting |
+| `compute_edit_distance()` | :269 | Levenshtein distance between old and new section text |
+| `compute_recency_weight()` | :287 | Exponential decay weighting for transcript age |
+| `compute_diversity()` | :311 | Failure diversity metrics for overfitting detection |
+
+**Agent execution:**
+| Function | Line | Purpose |
+|----------|------|---------|
+| `run_agent()` | :340 | Shell out to agent CLI (claude, cursor, codex, etc.) |
+| `extract_json()` | :384 | Extract JSON from LLM agent text output |
+| `apply_builtin_model_flag()` | :81 | Inject model flag into agent CLI template |
+
+**Instruction file operations:**
+| Function | Line | Purpose |
+|----------|------|---------|
+| `read_instruction_file()` | :488 | Read AGENTS.md content |
+| `parse_instruction_version()` | :495 | Parse `X.Y.Z` from version header |
+| `bump_patch_version()` | :503 | Increment patch version in content |
+| `extract_section()` | :540 | Pull a named section from markdown |
+| `replace_section()` | :586 | Replace a named section in markdown |
+| `snapshot_iteration_file()` | :516 | Save AGENTS_vN.md before overwrite |
+
+**History & persistence:**
+| Function | Line | Purpose |
+|----------|------|---------|
+| `load_reflections()` | :602 | Read episodic memory from reflections.jsonl |
+| `save_reflection()` | :609 | Append reflection entry |
+| `save_score()` | :623 | Append score entry + central scoreboard |
+| `estimate_iterations_to_target()` | :640 | Linear extrapolation of runs needed |
+| `is_converged()` | :738 | Check if section is above threshold across N runs |
+
+**Pipeline stages:**
+| Function | Line | Purpose |
+|----------|------|---------|
+| `_run_stage_bug_id()` | :1435 | Stage 2: LLM bug-identifier (uses `prompts/bug-identifier.md`) |
+| `_run_stage_judge()` | :1504 | Stage 3: LLM judge (uses `prompts/judge.md`) |
+| `_run_stage_impl()` | :1125 | Stage 4: LLM implementer (uses `prompts/implementer.md`) |
+| `_persist_and_report()` | :937 | Snapshot, bump, commit, log scores |
+| `calibrate()` | :1560 | Main entry point — orchestrates full pipeline |
+
+**LLM prompts** (in `clawdibrate/prompts/`):
+| Prompt | Used by | Purpose |
+|--------|---------|---------|
+| `bug-identifier.md` | `_run_stage_bug_id()` | Failure taxonomy: unnecessary_search, wrong_tool, boundary_violation, unnecessary_clarification, circuitous_path, repetition_loop |
+| `judge.md` | `_run_stage_judge()` | Score fixes 0.0–1.0, produce JSON section edits |
+| `implementer.md` | `_run_stage_impl()` | Apply approved edits surgically to AGENTS.md sections |
 
 ---
 

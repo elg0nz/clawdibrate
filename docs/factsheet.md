@@ -42,6 +42,24 @@ LLM-generated instruction files make agents worse (-2% success, +20% cost). The 
 **"Does it converge or oscillate?"**
 → You don't have systematic data yet. You observed oscillation in token-reduction and fixed it with single-pass compression. Full convergence testing is open work. Say this honestly.
 
+## Where things live (if they ask to see code)
+
+| What | Where |
+|---|---|
+| Deterministic metrics (Tier 1) | `clawdibrate/orchestrator.py:102` — `compute_metrics()` |
+| Rouge-L repetition detection | `clawdibrate/orchestrator.py:214` — `_rouge_l_similarity()` |
+| Weighted composite formula | `clawdibrate/orchestrator.py:102` — inside `compute_metrics()` return dict |
+| Bug-identifier prompt (Tier 2) | `clawdibrate/prompts/bug-identifier.md` |
+| Judge prompt | `clawdibrate/prompts/judge.md` |
+| Implementer prompt | `clawdibrate/prompts/implementer.md` |
+| Full pipeline entry point | `clawdibrate/orchestrator.py:1560` — `calibrate()` |
+| Section extraction/replacement | `clawdibrate/orchestrator.py:540` — `extract_section()`, `:586` — `replace_section()` |
+| Convergence check | `clawdibrate/orchestrator.py:738` — `is_converged()` |
+| Train/test split | `clawdibrate/orchestrator.py:242` — `split_transcripts()` |
+| Score persistence | `clawdibrate/orchestrator.py:623` — `save_score()` |
+| CLI modes (fast/progressive/max) | `clawdibrate/modes.py` |
+| Architecture overview | `ARCHITECTURE.md` |
+
 ## If you feel nervous
 
 1. **They invited you to present.** They already think the work is interesting.
