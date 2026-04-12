@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 for tracking AGENTS.md versions.
 
+## [0.14.0] - 2026-04-12
+
+### Changed
+- **Orchestrator refactor** — extracted 4 modules from the 1828-line monolith: `metrics.py` (deterministic Tier-1 metrics), `agent_execution.py` (CLI agent invocation), `repo.py` (instruction file operations), `history.py` (persistence and convergence tracking). Orchestrator reduced to 1168 lines (pipeline stages only).
+- **ARCHITECTURE.md** — added full function map with file:line references for all key functions and LLM prompts
+- **Factsheet** — added "where things live" quick-reference table for presentation
+
+### Added
+- 48 new TDD tests across 4 test files (112 total passing)
+
+## [0.13.0] - 2026-04-12
+
+### Added
+- **`/clawdbrt:present-web` skill** — Slidev-based web slideshow via `npx @slidev/cli`, no install required
+- **Dev tooling** — `uv` as package manager, `mypy` + `ruff` in `pyproject.toml`, VS Code workspace settings (Pylance autocomplete, mypy squiggles, ruff format-on-save)
+- **`docs/factsheet.md`** — emergency cheat sheet for Faros presentation (tradeoff table, Q&A, code locations)
+- **`docs/development.md`** — uv-based dev setup instructions
+
+### Changed
+- **CLI refactor** — split 507-line `__main__.py` into `cli.py`, `scores.py`, `modes.py` + thin dispatcher (24 new tests)
+- **Demo deck** — split 7 dense slides into 14 for readability, fixed broken image path, added reasoning/tradeoff framing
+- **README** — rewritten with before/after evidence, token estimates (~20k vs ~55k), getting started commands
+- **`docs/skills.md`** — synced with full skill inventory (12 user-facing + 10 section skills)
+- **`AGENTS.md`** — added `uv` as package manager in Setup section
+
 ## [0.12.0] - 2026-04-02
 
 ### Added
