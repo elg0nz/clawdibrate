@@ -1,6 +1,6 @@
 # Clawdibrate AGENTS.md
 
-> **Version: 0.14.0** | [Changelog](./docs/CHANGELOG.md)
+> **Version: 0.14.1** | [Changelog](./docs/CHANGELOG.md)
 >
 > Semver: **PATCH** = backward-compatible fixes (wording, tuning). **MINOR** = new backward-compatible functionality (new sections, commands, skills). **MAJOR** = incompatible changes to the calibration loop contract or CLI interface.
 >
@@ -19,22 +19,17 @@
 npx skills add ./src/skills --agent claude-code cursor codex --skill '*' -y --global
 ```
 
-**Agent env:**
-1. `repo/.clawdibrate/env` — copy `clawdibrate.env.example`, set `CLAWDIBRATE_AGENT=cursor`
-2. Fallback: `repo/.env` (`CLAWDIBRATE_*` keys only)
+**Agent env:** `repo/.clawdibrate/env` (copy `clawdibrate.env.example`, set `CLAWDIBRATE_AGENT=cursor`) or fallback `repo/.env` (`CLAWDIBRATE_*` keys only).
 
-**Built-in agents** (`--agent`/`CLAWDIBRATE_AGENT`, default `claude`):
-- `cursor` — `cursor agent --print --force`
-- `claude` — `claude -p "{prompt}" --dangerously-skip-permissions`
-- `codex` — `codex exec --full-auto "{prompt}"`
-- `opencode` — `opencode --prompt "{prompt}"`
-- `llm` — `llm "{prompt}"`
+**Agents** (`--agent`/`CLAWDIBRATE_AGENT`, default `claude`):
+- `cursor` → `cursor agent --print --force`
+- `claude` → `claude -p "{prompt}" --dangerously-skip-permissions`
+- `codex` → `codex exec --full-auto "{prompt}"`
+- `opencode` → `opencode --prompt "{prompt}"`
+- `llm` → `llm "{prompt}"`
+- Custom: `CLAWDIBRATE_AGENT_CMD='llm -s "$(cat {system_prompt})" {prompt}'`
 
-**Custom:** `CLAWDIBRATE_AGENT_CMD='llm -s "$(cat {system_prompt})" {prompt}'`
-
-**Runtime:** Python 3.10+, Node.js
-
-**Package manager:** `uv` — never use `pip install`. Use `uv add` for deps, `uv run` to execute (e.g. `uv run pytest`).
+**Runtime:** Python 3.10+, Node.js. Use `uv` only — `uv add` for deps, `uv run` to execute (never `pip install`).
 
 
 ## Commands
@@ -44,32 +39,33 @@ See `/clawdbrt:commands` for detailed guidance.
 
 ## Skills
 
-Skills: `src/skills/<name>/SKILL.md`, prefix `clawdbrt:`. Frontmatter: `name: clawdbrt:<skill-name>`, `description`. Register: `npx skills add ./src/skills --agent <agents> --skill '*' -y --global`. Commit `skills-lock.json`, `skills/`, `.agents/`. Edit only `src/skills/`—never `skills/` or `.agents/skills/`. All capabilities must be skills.
+Skills: `src/skills/<name>/SKILL.md`, prefix `clawdbrt:`. Frontmatter: `name`+`description`. Register: `npx skills add ./src/skills --agent <agents> --skill '*' -y --global`. Commit `skills-lock.json`, `skills/`, `.agents/`. Edit only `src/skills/`—never `skills/` or `.agents/skills/`. All capabilities must be skills.
 
-Core: `loop` (tuning), `kanban` (cards), `add-new-features` (proposals), `implement` (parallel), `scores` (scoreboard).
+Core skills: `loop`, `kanban`, `add-new-features`, `implement`, `scores`.
 
-Extract section → `src/skills/<kebab>/SKILL.md` when score <0.7 (3+ runs) or churn ≥3. Reference as `See /clawdbrt:<skill>`. Externalized sections must never be re-expanded inline—re-expansion is a boundary violation.
+Extract section→`src/skills/<kebab>/SKILL.md` when score <0.7 (3+ runs) or churn ≥3. Reference as `See /clawdbrt:<skill>`. Never re-expand externalized sections inline (boundary violation).
 
 
 ## Bootstrap Transcript Calibrator
 
-Pipeline: `transcript → metrics → bug-identifier → judge → implementer → section-scoped edits → new AGENTS.md`
+`transcript → metrics → bug-identifier → judge → implementer → section-scoped edits → new AGENTS.md`
 
 **Specs:** Latest `docs/vX_Y_Z/specs/` (fallback older). Ref: `docs/vX_Y_Z/README.md` + `clawdibrate/orchestrator.py`
 
-**Pre-analysis:** Verify transcript completeness + AGENTS.md ends properly. STOP if truncated.
+**Pre-analysis:** Verify transcript + AGENTS.md completeness; STOP if truncated. Read AGENTS.md in full (no offset/limit).
 
-**AGENTS.md:** Full Read only — no offset/limit.
-
-**Rules:**
-- Read tool=reads; Glob=discovery; Grep=search; Read offset/limit=line ranges — no Bash cat/head/sed/awk/find/grep
-- Flag sections with ≥3 edits before editing
-- Churn signals: batch all into one parallel pass — never sequential per-event
-- Calibration pass: single batched commit for all AGENTS.md changes; 2 consecutive AGENTS.md-only commits within 5min = loop, STOP
-- >3 files: single batched agent OR parallel tool calls; Explore OR read directly — never both for same files
+**Tool rules:**
+- Read=reads; Glob=discovery; Grep=search; Read offset/limit=line ranges — no Bash cat/head/sed/awk/find/grep
 - Always Read before Edit; on failure Read again before retry
-- Shell: Shell tool only
-- Output: complete valid JSON with all required fields
+- Shell tool only for shell commands
+
+**Edit rules:**
+- Flag sections with ≥3 edits before editing
+- Batch all churn signals into one parallel pass — never sequential per-event
+- All AGENTS.md changes: single batched commit; 2 consecutive AGENTS.md-only commits within 5min = loop → STOP
+- >3 files: single batched agent OR parallel tool calls; Explore OR read directly — never both for same files
+
+**Output:** Complete valid JSON with all required fields.
 
 
 ## Tuning Rules
@@ -95,11 +91,10 @@ Pipeline: `transcript → metrics → bug-identifier → judge → implementer �
 ## Known Gotchas
 
 - JSON parse fail: `try/except` → `re.search(r'\{.*\}', s, re.DOTALL)`
-- Claude prompt flag: `-p`; resume: `--continue`
-- Subprocess: `timeout=120`
+- Claude: prompt=-p, resume=--continue, subprocess timeout=120
 - Score plateau: capture harder sessions before rewriting sections
 - Regression: check `reflection_history` before rewriting failing tasks
-- CC logs: JSONL `~/.claude/projects/<mangled-cwd>/` (`/`→`-`); parse message types/content blocks directly
+- CC logs: JSONL `~/.claude/projects/<mangled-cwd>/` (`/`→`-`); lines: `{type,message:{role,content:[{type:"text",text}|{type:"tool_use",id,name,input}|{type:"tool_result",tool_use_id,content}]}}`; `json.loads()` per line, filter on `type`/`content[*].type`
 
 
 ## Score Tracking
@@ -114,13 +109,11 @@ After every calibration run, log to stdout and append to these files:
 
 ## References
 
-- **Reflexion** — Shinn et al., NeurIPS 2023
-- **RISE** — Qu et al., 2024
-- **Recursive Language Models** — Zhang, Kraska, Khattab, Dec 2025 (arxiv.org/abs/2512.24601)
-- **Evaluating AGENTS.md** — arxiv.org/abs/2602.11988
-- **Engineering Guide** — latest `docs/vX_Y_Z/specs/agents_md_engineering_guide.md`
+**Refs:** Reflexion (Shinn et al., NeurIPS 2023) · RISE (Qu et al., 2024) · Recursive LMs (Zhang/Kraska/Khattab, arxiv.org/abs/2512.24601) · Evaluating AGENTS.md (arxiv.org/abs/2602.11988) · Engineering Guide: `docs/vX_Y_Z/specs/agents_md_engineering_guide.md`
 
 <!-- BEGIN BEADS INTEGRATION -->
+
+
 ## Issue Tracking with bd (beads)
 
 `Run /clawdbrt:issue-tracking-with-bd-beads for guidance.`
