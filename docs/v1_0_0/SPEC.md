@@ -145,34 +145,29 @@ Scorecard produced by the MCP `score` tool, by a CLI read-only command, or both?
 | `calibrate-this-repo` | orientation: evidence → calibrated file | new |
 | `interpret-scores` | explain a score/section result to the user | new |
 
-## OPEN DECISIONS (resolve before cards are built)
+## RESOLVED DECISIONS (locked 2026-05-29)
 
-1. **Install / entrypoints** — two things ship now: the **MCP server** and the **downscoped CLI**.
-   One package, two console scripts? (`clawdibrate` = CLI, `clawdibrate-mcp` = server.) Publish to
-   PyPI → `uvx clawdibrate-mcp` / `uvx clawdibrate`, vs `uvx --from git+…`. Reconcile with "uv only".
-2. **`--setup` replacement — RESOLVED (2026-05-29).** Setup did three things; here is the disposition:
-   - (a) detect/create the active instruction file + `AGENTS.md`/`CLAUDE.md` pointer → moves to the
-     **CLI** (`init-pointer`).
-   - (b) install bundled skills via `npx skills add` → **dropped** (skills retired).
-   - (c) configure `.claude/settings.json` → **dropped.** Pre-1.0 this only pre-approved three Bash
-     permissions so Claude Code wouldn't prompt: `Bash(python -m clawdibrate:*)`,
-     `Bash(npx skills add:*)`, `Bash(echo * >> .clawdibrate/:*)`. All three are old-architecture
-     artifacts (broad CLI, skills install, recording-skill transcript writes). With an MCP server,
-     the host approves *MCP tools* via `.mcp.json`, not Bash glob patterns — so there is nothing left
-     to grant. `_ensure_permissions()` and the settings.json write are removed.
-   - **Net:** `--setup` is fully dissolved. Its one surviving job (pointer creation) becomes a CLI
-     command; the skills-install and permission-injection both go away.
-3. **How the MCP calls the CLI** — system call to the `clawdibrate` console script vs importing the
-   shared `instruction_files` module in-process. (User asked for system calls; confirm that's the
-   contract, including how content is passed — e.g. stdin to avoid arg-size limits.)
-4. **Model execution path** — for model-backed tools: MCP sampling (host's model) vs the existing
-   `CLAWDIBRATE_AGENT` CLI adapter vs spawned agent. Must preserve the no-upload guarantee.
-5. **Resource URI scheme** — exact addressing for sessions / git-history / transcripts.
-6. **MCP framework** — Python MCP SDK; added to `pyproject.toml` deps via uv.
-7. **Downscoped CLI surface** — exact subcommands/flags for the file-manipulation tool (names above
-   are proposed).
-8. **Scorecard rendering home** — MCP `score` tool output, a read-only CLI command, or both.
-9. **Final tool/resource/prompt names** — proposed above, not locked.
+1. **Install / entrypoints — LOCKED.** One package, two console scripts: `clawdibrate` (downscoped
+   CLI) and `clawdibrate-mcp` (server). Published to PyPI; primary install `uvx clawdibrate-mcp`
+   (and `uvx clawdibrate` for the CLI). Honors "uv only".
+2. **`--setup` — LOCKED (dissolved).** (a) instruction-file + pointer → CLI `init-pointer`;
+   (b) `npx skills add` → dropped (skills retired); (c) `.claude/settings.json` → dropped (pre-1.0 it
+   only pre-approved three Bash globs that are all old-architecture artifacts; with MCP the host
+   approves MCP tools via `.mcp.json`, so `_ensure_permissions()` and the settings write are removed).
+3. **MCP → CLI call — LOCKED.** `implement` mutates the file via a **system call** to `clawdibrate`;
+   section content passed over **stdin** (no arg-size limits). One shared mutation path.
+4. **Model execution path — LOCKED.** Model-backed tools use **MCP sampling** (host's model; no API
+   key, no upload); fallback to the `CLAWDIBRATE_AGENT` CLI adapter when sampling is unavailable.
+   `generate_metrics` and the drift checker stay model-free.
+5. **Resource URIs — LOCKED.** `clawdibrate://sessions`, `…/sessions/{id}`, `…/git-history`,
+   `…/transcripts/{name}`, `…/history/scores`.
+6. **MCP framework — LOCKED.** Official Python MCP SDK installed as **`mcp[cli]`**, with **FastAPI**
+   for the server's HTTP transport/app. Both added to `pyproject.toml` via uv.
+7. **Downscoped CLI surface — LOCKED.** `sections` (list), `get <section>`, `replace <section>`
+   (content on stdin), `tokens`, `init-pointer`, `scorecard` (read-only render from history).
+8. **Scorecard home — LOCKED (both).** MCP `score` returns it (structured + rendered); CLI
+   `clawdibrate scorecard` renders read-only from `.clawdibrate/history/`, no model call.
+9. **Names — LOCKED** as written throughout this SPEC.
 
 ## Acceptance Criteria (release)
 
