@@ -1,6 +1,6 @@
 ---
-name: clawdbrt:setup
-description: "Externalized AGENTS.md heading 'Setup' as clawdbrt:setup (clawdibrate auto-extract)."
+name: clawdbrt-setup
+description: "Externalized AGENTS.md heading 'Setup' as clawdbrt-setup (clawdibrate auto-extract)."
 ---
 
 # Setup

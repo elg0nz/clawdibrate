@@ -1,6 +1,6 @@
 ---
-name: clawdbrt:boundaries
-description: "Externalized AGENTS.md heading 'Boundaries' as clawdbrt:boundaries (clawdibrate auto-extract)."
+name: clawdbrt-boundaries
+description: "Externalized AGENTS.md heading 'Boundaries' as clawdbrt-boundaries (clawdibrate auto-extract)."
 ---
 
 # Boundaries
@@ -16,7 +16,7 @@ description: "Externalized AGENTS.md heading 'Boundaries' as clawdbrt:boundaries
 - ✅ Spawn parallel agents for independent kanban cards
 - ✅ Don't duplicate file reads between main thread and spawned agents
 - ✅ Version workflow: SPEC.md → kanban → copy icebox → work cards → README.md → CHANGELOG.md → bump → commit
-- ✅ `/clawdbrt:loop` calibrates, `/clawdbrt:add-new-features` MINOR only, MAJOR needs human approval
+- ✅ `/clawdbrt-loop` calibrates, `/clawdbrt-add-new-features` MINOR only, MAJOR needs human approval
 - ✅ Check existing tools before implementing
 - ✅ Tickets: `clwdi-v{MAJOR}_{MINOR}_{PATCH}-{NNN}.md`, rename when moving versions, copy `icebox.md`
 - ⚠️ Ask: new evaluation tasks, judge threshold <0.7

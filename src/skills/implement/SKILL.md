@@ -1,9 +1,9 @@
 ---
-name: clawdbrt:implement
+name: clawdbrt-implement
 description: Read the kanban board for a version, pick up todo/backlog cards by priority, and implement them — spawning parallel agents for independent work.
 ---
 
-# /clawdbrt:implement
+# /clawdbrt-implement
 
 Implement kanban cards for a target version. Reads the board, respects dependency order, and spawns parallel agents for independent cards.
 
@@ -12,10 +12,10 @@ Implement kanban cards for a target version. Reads the board, respects dependenc
 ## Usage
 
 ```
-/clawdbrt:implement                  # implement current version (latest docs/vX_Y_Z/)
-/clawdbrt:implement v0.5.0           # implement a specific version
-/clawdbrt:implement --card 011       # implement a single card
-/clawdbrt:implement --dry-run        # show execution plan without implementing
+/clawdbrt-implement                  # implement current version (latest docs/vX_Y_Z/)
+/clawdbrt-implement v0.5.0           # implement a specific version
+/clawdbrt-implement --card 011       # implement a single card
+/clawdbrt-implement --dry-run        # show execution plan without implementing
 ```
 
 ---

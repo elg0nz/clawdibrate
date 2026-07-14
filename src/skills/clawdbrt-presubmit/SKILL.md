@@ -1,16 +1,16 @@
 ---
-name: clawdbrt:presubmit
+name: clawdbrt-presubmit
 description: Run the Python quality gate (ruff, mypy, bandit, vulture, radon, inline imports) and report results
 ---
 
-# /clawdbrt:presubmit — Python Quality Gate
+# /clawdbrt-presubmit — Python Quality Gate
 
 Run all presubmit checks for the clawdibrate project and report pass/fail status.
 
 ## Usage
 
 ```
-/clawdbrt:presubmit
+/clawdbrt-presubmit
 ```
 
 ## Steps

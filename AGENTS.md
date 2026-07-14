@@ -10,7 +10,7 @@
 
 ## Identity
 
-`/clawdbrt:identity`
+`/clawdbrt-identity`
 
 
 ## Setup
@@ -34,16 +34,16 @@ npx skills add ./src/skills --agent claude-code cursor codex --skill '*' -y --gl
 
 ## Commands
 
-See `/clawdbrt:commands` for detailed guidance.
+See `/clawdbrt-commands` for detailed guidance.
 
 
 ## Skills
 
-Skills: `src/skills/<name>/SKILL.md`, prefix `clawdbrt:`. Frontmatter: `name`+`description`. Register: `npx skills add ./src/skills --agent <agents> --skill '*' -y --global`. Commit `skills-lock.json`, `skills/`, `.agents/`. Edit only `src/skills/`—never `skills/` or `.agents/skills/`. All capabilities must be skills.
+Skills: `src/skills/<name>/SKILL.md`, prefix `clawdbrt-`. Frontmatter: `name`+`description`. Register: `npx skills add ./src/skills --agent <agents> --skill '*' -y --global`. Commit `skills-lock.json`, `skills/`, `.agents/`. Edit only `src/skills/`—never `skills/` or `.agents/skills/`. All capabilities must be skills.
 
 Core skills: `loop`, `kanban`, `add-new-features`, `implement`, `scores`.
 
-Extract section→`src/skills/<kebab>/SKILL.md` when score <0.7 (3+ runs) or churn ≥3. Reference as `See /clawdbrt:<skill>`. Never re-expand externalized sections inline (boundary violation).
+Extract section→`src/skills/<kebab>/SKILL.md` when score <0.7 (3+ runs) or churn ≥3. Reference as `See /clawdbrt-<skill>`. Never re-expand externalized sections inline (boundary violation).
 
 
 ## Bootstrap Transcript Calibrator
@@ -70,7 +70,7 @@ Extract section→`src/skills/<kebab>/SKILL.md` when score <0.7 (3+ runs) or chu
 
 ## Tuning Rules
 
-`/clawdbrt:tuning-rules`
+`/clawdbrt-tuning-rules`
 
 
 ## Boundaries
@@ -78,11 +78,11 @@ Extract section→`src/skills/<kebab>/SKILL.md` when score <0.7 (3+ runs) or chu
 - Use latest `docs/vX_Y_Z/`; fallback older
 - Inject AGENTS.md as system prompt; save `.clawdibrate/iterations/AGENTS_vN.md` before overwrite; track `reflection_history`; route failures to section
 - Flow: SPEC.md→kanban→icebox→cards→README.md→CHANGELOG.md→bump→commit
-- Atomic bump: `pyproject.toml`+`AGENTS.md` header+`CHANGELOG.md`; use `/clawdbrt:bump-version` if exists; commit after
+- Atomic bump: `pyproject.toml`+`AGENTS.md` header+`CHANGELOG.md`; use `/clawdbrt-bump-version` if exists; commit after
 - Skills: `src/skills/{name}/SKILL.md`→`npx skills add ./src/skills --agent <agents> --skill '*' -y --global`
 - Tickets: `clwdi-v{MAJ}_{MIN}_{PAT}-{NNN}.md`; rename on move; copy `icebox.md`
 - Parallel agents for independent cards; skip file reads if agent handles them
-- `/clawdbrt:loop`=PATCH; `/clawdbrt:add-new-features`=MINOR; MAJOR needs approval
+- `/clawdbrt-loop`=PATCH; `/clawdbrt-add-new-features`=MINOR; MAJOR needs approval
 - Ask before: new eval types, judge <0.7
 - Never: rewrite ≥0.95/3+iter, remove Boundaries, add unrequested lines, use checklists/TaskCreate, directly edit `skills/`/`.agents/`, auto-bump MAJOR
 - Check existing tools before implementing
@@ -116,10 +116,10 @@ After every calibration run, log to stdout and append to these files:
 
 ## Issue Tracking with bd (beads)
 
-`Run /clawdbrt:issue-tracking-with-bd-beads for guidance.`
+`Run /clawdbrt-issue-tracking-with-bd-beads for guidance.`
 
 
 ## Landing the Plane (Session Completion)
 
-`/clawdbrt:landing-the-plane-session-completion` handles all commits. Never run `git add/commit/push` manually — not even at session end. If the skill was already invoked, do not fall back to raw git commands.
+`/clawdbrt-landing-the-plane-session-completion` handles all commits. Never run `git add/commit/push` manually — not even at session end. If the skill was already invoked, do not fall back to raw git commands.
 

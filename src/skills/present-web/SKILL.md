@@ -1,5 +1,5 @@
 ---
-name: clawdbrt:present-web
+name: clawdbrt-present-web
 description: Launch the demo deck as a web slideshow using Slidev (npx, no install required)
 ---
 
@@ -9,7 +9,7 @@ Launch `docs/demo-deck.mdx` as an interactive web presentation using Slidev.
 
 ## When to Use
 
-When the user types `/clawdbrt:present-web` or asks to present the deck in a browser.
+When the user types `/clawdbrt-present-web` or asks to present the deck in a browser.
 
 ## Instructions
 

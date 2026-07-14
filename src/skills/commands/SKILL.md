@@ -1,6 +1,6 @@
 ---
-name: clawdbrt:commands
-description: "Externalized AGENTS.md heading 'Commands' as clawdbrt:commands (clawdibrate auto-extract)."
+name: clawdbrt-commands
+description: "Externalized AGENTS.md heading 'Commands' as clawdbrt-commands (clawdibrate auto-extract)."
 ---
 
 # Commands

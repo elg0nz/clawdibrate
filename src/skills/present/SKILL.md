@@ -1,5 +1,5 @@
 ---
-name: clawdbrt:present
+name: clawdbrt-present
 description: Present the Faros AI take-home deck interactively via chat. An ASCII cow narrates each slide. User types "next slide" to advance.
 ---
 
@@ -9,7 +9,7 @@ Present the clawdibrate take-home deck one slide at a time in the terminal. An A
 
 ## When to Use
 
-When the user types `/clawdbrt:present` or asks to present, rehearse, or run through the Faros deck.
+When the user types `/clawdbrt-present` or asks to present, rehearse, or run through the Faros deck.
 
 ## Instructions
 

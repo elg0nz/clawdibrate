@@ -178,12 +178,12 @@ transcript.jsonl
 
 ## Skills System
 
-Skills are slash commands that route to `SKILL.md` files. All use the `clawdbrt:` namespace.
+Skills are slash commands that route to `SKILL.md` files. All use the `clawdbrt-` namespace.
 
 **Canonical source:** `src/skills/{name}/SKILL.md` with YAML frontmatter:
 ```yaml
 ---
-name: clawdbrt:<skill-name>
+name: clawdbrt-<skill-name>
 description: Short description
 ---
 # Agent instructions
@@ -195,7 +195,7 @@ npx skills add ./src/skills --agent claude-code cursor codex --skill '*' -y
 ```
 This writes `skills/` and `.agents/skills/` (both committed). Never edit those outputs directly.
 
-**Section skills:** When a section scores < 0.7 across 3+ runs or has churn ≥ 3 in git, its content is externalized to `src/skills/<section-name>/SKILL.md` and referenced from AGENTS.md: `See /clawdbrt:<skill-name> for detailed guidance.`
+**Section skills:** When a section scores < 0.7 across 3+ runs or has churn ≥ 3 in git, its content is externalized to `src/skills/<section-name>/SKILL.md` and referenced from AGENTS.md: `See /clawdbrt-<skill-name> for detailed guidance.`
 
 ---
 
@@ -248,8 +248,8 @@ Claude Code sessions are parsed from `~/.claude/projects/<mangled-cwd>/*.jsonl` 
 
 | Bump | Trigger | Who |
 |------|---------|-----|
-| PATCH `X.Y.Z+1` | Wording/tuning fixes | `/clawdbrt:loop` (auto) |
-| MINOR `X.Y+1.0` | New sections, commands, skills | `/clawdbrt:add-new-features` |
+| PATCH `X.Y.Z+1` | Wording/tuning fixes | `/clawdbrt-loop` (auto) |
+| MINOR `X.Y+1.0` | New sections, commands, skills | `/clawdbrt-add-new-features` |
 | MAJOR `X+1.0.0` | Breaking loop contract or CLI | Human only |
 
 Version workflow: `SPEC.md → kanban cards → copy icebox → implement cards → README.md → CHANGELOG.md → bump → commit`

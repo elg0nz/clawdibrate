@@ -5,9 +5,9 @@ npx skills add ./src/skills --all -y
 # After this completes, restart your terminal (or reload your IDE) so the new skills are available
 
 # Record a real session first
-/clawdbrt:record-start
+/clawdbrt-record-start
 # ...do normal work...
-/clawdbrt:record-stop
+/clawdbrt-record-stop
 
 # Install once, then run against any repo with an AGENTS.md
 python -m pip install -e .

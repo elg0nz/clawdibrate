@@ -149,8 +149,8 @@ def _collect_section_skill_suggestions(
             continue
 
         if (
-            f"`/clawdbrt:{skill_name}`" in instruction_content
-            or f"See /clawdbrt:{skill_name}" in instruction_content
+            f"`/clawdbrt-{skill_name}`" in instruction_content
+            or f"See /clawdbrt-{skill_name}" in instruction_content
         ):
             continue
 
@@ -206,19 +206,19 @@ def _materialize_section_skills(
         skill_file = skill_dir / "SKILL.md"
         desc = (
             f"Externalized {instruction_path.name} heading {section!r} "
-            f"as clawdbrt:{skill_name} (clawdibrate auto-extract)."
+            f"as clawdbrt-{skill_name} (clawdibrate auto-extract)."
         )
         desc_yaml = desc.replace("\\", "\\\\").replace('"', '\\"')
         skill_md = (
             "---\n"
-            f"name: clawdbrt:{skill_name}\n"
+            f"name: clawdbrt-{skill_name}\n"
             f'description: "{desc_yaml}"\n'
             "---\n\n"
             f"# {section}\n\n"
             f"{section_body.strip()}\n"
         )
         skill_file.write_text(skill_md, encoding="utf-8")
-        pointer = f"See `/clawdbrt:{skill_name}` for detailed guidance."
+        pointer = f"See `/clawdbrt-{skill_name}` for detailed guidance."
         new_body = replace_section(new_body, section, pointer)
         created_slugs.append(skill_name)
         print(f"  ✓ wrote src/skills/{skill_name}/SKILL.md and stubbed section '{section}'")
@@ -696,7 +696,7 @@ def _discover_transcripts(
 
     if not transcripts:
         print(
-            f"No transcripts found in {transcripts_dir}. Run /clawdbrt:record-start before working, then /clawdbrt:record-stop.",
+            f"No transcripts found in {transcripts_dir}. Run /clawdbrt-record-start before working, then /clawdbrt-record-stop.",
             file=sys.stderr,
         )
         return [], [], []

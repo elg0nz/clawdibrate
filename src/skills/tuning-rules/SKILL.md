@@ -1,6 +1,6 @@
 ---
-name: clawdbrt:tuning-rules
-description: "Externalized AGENTS.md heading 'Tuning Rules' as clawdbrt:tuning-rules (clawdibrate auto-extract)."
+name: clawdbrt-tuning-rules
+description: "Externalized AGENTS.md heading 'Tuning Rules' as clawdbrt-tuning-rules (clawdibrate auto-extract)."
 ---
 
 # Tuning Rules

@@ -1,6 +1,6 @@
 ---
-name: clawdbrt:landing-the-plane-session-completion
-description: "Externalized AGENTS.md heading 'Landing the Plane (Session Completion)' as clawdbrt:landing-the-plane-session-completion (clawdibrate auto-extract)."
+name: clawdbrt-landing-the-plane-session-completion
+description: "Externalized AGENTS.md heading 'Landing the Plane (Session Completion)' as clawdbrt-landing-the-plane-session-completion (clawdibrate auto-extract)."
 ---
 
 # Landing the Plane (Session Completion)

@@ -1,5 +1,5 @@
 ---
-name: clawdbrt:loop
+name: clawdbrt-loop
 description: Run transcript-based Clawdibrate calibration. Analyzes recorded sessions, scores AGENTS.md failures, and rewrites the responsible sections.
 ---
 
@@ -9,7 +9,7 @@ Run Clawdibrate against recorded real-world transcripts to improve the repo's ac
 
 ## When to Use
 
-When the user types `/clawdbrt:loop` or asks to calibrate or improve `AGENTS.md` or `CLAUDE.md` from real sessions.
+When the user types `/clawdbrt-loop` or asks to calibrate or improve `AGENTS.md` or `CLAUDE.md` from real sessions.
 
 ## How It Works
 
@@ -56,4 +56,4 @@ Instrumentation is written to `.clawdibrate/history/instrumentation.jsonl` with 
 - Prefer deterministic metrics before model judgment
 - Track reflections and baselines in `.clawdibrate/history/`
 - When AGENTS.md changes, the loop snapshots prior content to `.clawdibrate/iterations/AGENTS_vN.md` and bumps PATCH version in the header.
-- When section-skill suggestions print, the loop **applies** them by default: writes `src/skills/<slug>/SKILL.md`, replaces the section with a `/clawdbrt:` pointer, runs `npx skills add ./src/skills --all -y`, and commits. Use `python -m clawdibrate --no-auto-section-skills` to only print suggestions.
+- When section-skill suggestions print, the loop **applies** them by default: writes `src/skills/<slug>/SKILL.md`, replaces the section with a `/clawdbrt-` pointer, runs `npx skills add ./src/skills --all -y`, and commits. Use `python -m clawdibrate --no-auto-section-skills` to only print suggestions.

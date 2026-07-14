@@ -1,6 +1,6 @@
 ---
-name: clawdbrt:known-gotchas
-description: "Externalized AGENTS.md heading 'Known Gotchas' as clawdbrt:known-gotchas (clawdibrate auto-extract)."
+name: clawdbrt-known-gotchas
+description: "Externalized AGENTS.md heading 'Known Gotchas' as clawdbrt-known-gotchas (clawdibrate auto-extract)."
 ---
 
 # Known Gotchas

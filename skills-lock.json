@@ -6,120 +6,120 @@
       "sourceType": "local",
       "computedHash": "67d1ae25fa9789ad20d6bf231f978a75608a55d578b7e01a63e513ff53fe13c4"
     },
-    "clawdbrt:add-new-features": {
+    "clawdbrt-add-new-features": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "2caa2ccc755e5dfcd9a7025ffbb94d37784a4a28821ad4df5860593989d70e43"
+      "computedHash": "04770d72c50839db3f1a9a72c285947a93558bfedd9c3513099fc37741eea728"
     },
-    "clawdbrt:bootstrap-transcript-calibrator": {
+    "clawdbrt-bootstrap-transcript-calibrator": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "7f0ecd03df9009e9c23e2217d9fda7da1c68fa052b1ce26742f70d27cf989efe"
+      "computedHash": "a26c22311cddf3b6c595041374a4c66337d8d63e2b26c1c62e2d0c56fc4a4ae7"
     },
-    "clawdbrt:boundaries": {
+    "clawdbrt-boundaries": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "b1fdabcfad0c41d065707cd1f4484f42fc95e7b4592e8bdfa3083827f0077e54"
+      "computedHash": "a98b65831ccb3304536d79300944a4a346e63751af938cda39010e7e9fe04dbf"
     },
-    "clawdbrt:commands": {
+    "clawdbrt-commands": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "fe82a9f10e9123ba500cdaf20edef1e2fc6ca9fcb45cfcb716ad7b020dae2fd1"
+      "computedHash": "298e1702275b26954ece4a2706b69d9932cf29e5d7d9f849c3a50ad38ff6f83e"
     },
-    "clawdbrt:identity": {
+    "clawdbrt-identity": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "bb8d7054cc573dda8540e73e339a2220af6739a87f5a0681f620cbdcce9f2f90"
+      "computedHash": "332e4d287d982b19c779477aa34da6fc0e1af5f64c6b1ac29f466a81cab08a4b"
     },
-    "clawdbrt:implement": {
+    "clawdbrt-implement": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "f4bb7e3ca69557c816268364578c6df6bd77f39e4842d85a0b4d44a424bbe97b"
+      "computedHash": "420e469ad7d7655c7dc707041da2770d55f3aa58d3631750ad855bce0e0fbcb6"
     },
-    "clawdbrt:issue-tracking-with-bd-beads": {
+    "clawdbrt-issue-tracking-with-bd-beads": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "7fb88ed779352e224396faac0e35810b6370017402cf6e0ba2155a38fd8a1063"
+      "computedHash": "439474c27cf6e0c0c23aa3acdcfde12e9a33b6f41127a2e2b7c7433a198923a0"
     },
-    "clawdbrt:kanban": {
+    "clawdbrt-kanban": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "ee2777a8e410da41add5886e2732ea19211f44cdcca38f970dd5d0b4c32b0b9d"
+      "computedHash": "52f40cbbced0f41ccf813a97c9b5cd95f66e47857d821c6dce124b367494b886"
     },
-    "clawdbrt:known-gotchas": {
+    "clawdbrt-known-gotchas": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "40066706a271aa2e5169c9a4978eb68c17a61e2a6a38537e1c0f847e253fdd59"
+      "computedHash": "3950e91774e863e2ae3f6f7a1c8844410b265e05973f2d19d893e3a4d76d3e09"
     },
-    "clawdbrt:landing-the-plane-session-completion": {
+    "clawdbrt-landing-the-plane-session-completion": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "3ba11764d756b1ddd6c6e3cc4fa79dcbcab879d42df1648225eb3726cead0d6a"
+      "computedHash": "5188cc7cd42457165a0f432bb9c655f59b9b0e83a3e3ed8986b9efd5a606061d"
     },
-    "clawdbrt:loop": {
+    "clawdbrt-loop": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "954fabf32fb94fe64f73a343f569dc8a95e9ad8bdee2b332a19583dc67cbb1a7"
+      "computedHash": "169c197d7fe60a23e82eae03419f3a1557ac1b20bc2e935de990acbfcf773b69"
     },
-    "clawdbrt:present": {
+    "clawdbrt-present": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "2bbb6b3b68ca8ed8b567f70c6665b3f120f0eaa995f3f82074430dfeea650673"
+      "computedHash": "f6ec76a41df8d9ddde72a70422ec842648384bc0fc1e616055fd10f19ca18833"
     },
-    "clawdbrt:present-web": {
-      "source": "/Users/gonz/Code/clawdibrate/src/skills/present-web",
-      "sourceType": "local",
-      "computedHash": "47fde0f4e975a12d69f299067f36735236252d4960fd4963d6b8b4efe4dda419"
-    },
-    "clawdbrt:presubmit": {
+    "clawdbrt-present-web": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "18557b59eeca4a55a92f205d5859c9446755fbc3645c9469c23003b799cf6f06"
+      "computedHash": "a99c1f11746e5b24f067dcbf7e44788bc4357c8ad742014919a7d6afcf64bf82"
     },
-    "clawdbrt:record-from-git": {
+    "clawdbrt-presubmit": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "41dcde8b1ccb0c3e27bcb8e56629ca19364a013cf4a01256a21f7ca8b5639c2c"
+      "computedHash": "807ce42c30ca6a852dd7d6f1d7e5bf3410d46501a44208ebcb9a23d3d22be23f"
     },
-    "clawdbrt:record-session": {
+    "clawdbrt-record-from-git": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "36c9a1948047d1b1ea4392d4c829d02ba3a76dc88f6dc244cbbd5f3de54ee0d1"
+      "computedHash": "ba22243dc515b975767e08900d9fa6dccc6d32ddbd6731d8f4fbefb300cfe4d1"
     },
-    "clawdbrt:record-start": {
+    "clawdbrt-record-session": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "93ab57fbc55ee32f11f70ef712273a27f738878b53f31dd3e723bb0477890153"
+      "computedHash": "9d97c845e11300782e147cb893589158baedff73afbe34d34aa54c69744af879"
     },
-    "clawdbrt:record-stop": {
+    "clawdbrt-record-start": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "2d04f17e97158fdc0ff420eb46a64bb4dff2e2ccb4d1d286972f4a746c1209f3"
+      "computedHash": "9218614c84054d93b7ef1bd2a6059e50a83d99da356d90c98f3c565be60f9e4d"
     },
-    "clawdbrt:scores": {
+    "clawdbrt-record-stop": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "1c5140c5545615f970e084bfb8de366fc113269004f25a42902c813ea9f0dc34"
+      "computedHash": "3c2f1251a2578ba3366f9f488d67fda2766f241092b85412b40a277d1bfe6f06"
     },
-    "clawdbrt:setup": {
+    "clawdbrt-scores": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "492b2712d50d22a0974cf414d500801858ef0b90530ea4db11383de4b268cd64"
+      "computedHash": "4323f82ff6aeb1cbc3708a4a234086adef6738a3d453c8aa8469d81f0bec99f8"
     },
-    "clawdbrt:skills": {
+    "clawdbrt-setup": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "5cf6c386ad648c8315325441cfedf5c16ac4b2e9c5699b52c89745fe187baf23"
+      "computedHash": "c8dd15cf5c7003d3eb65f9ccc2254077e41f38cd82817f0ab474155bc22336de"
     },
-    "clawdbrt:tokens": {
+    "clawdbrt-skills": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "75e83409fbf6a7e3982e79dd0c4755a2ce28dbb45eae92de22c41be4f2859fc7"
+      "computedHash": "dffcbbcdca5288512c9c29ca378b91cda935d20dfd6a4f576cbca26498907548"
     },
-    "clawdbrt:tuning-rules": {
+    "clawdbrt-tokens": {
       "source": "/Users/gonz/Code/clawdibrate/src/skills",
       "sourceType": "local",
-      "computedHash": "b6d88d2dd52ccae4bd5ae2ea050c4405c100bb889d0ffa4472e85886338c4639"
+      "computedHash": "2da06fb1cb807b6c1481f539d96614cff1755d918c74a713a37de4d0c8f25cd5"
+    },
+    "clawdbrt-tuning-rules": {
+      "source": "/Users/gonz/Code/clawdibrate/src/skills",
+      "sourceType": "local",
+      "computedHash": "8eb613f873f33b3832d7870fe706df31f9f949b6a250d83e8cdd8cb4012efe1a"
     },
     "deploy-to-vercel": {
       "source": "vercel-labs/agent-skills",

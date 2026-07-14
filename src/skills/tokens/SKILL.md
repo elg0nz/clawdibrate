@@ -1,17 +1,17 @@
 ---
-name: clawdbrt:tokens
+name: clawdbrt-tokens
 description: Show per-section token breakdown and budget status for the instruction file
 ---
 
-# /clawdbrt:tokens — Token Dashboard
+# /clawdbrt-tokens — Token Dashboard
 
 Show token usage per section with trend data from the last calibration run.
 
 ## Usage
 
 ```
-/clawdbrt:tokens                          # token dashboard for current repo
-/clawdbrt:tokens --file PATH              # specify instruction file explicitly
+/clawdbrt-tokens                          # token dashboard for current repo
+/clawdbrt-tokens --file PATH              # specify instruction file explicitly
 ```
 
 ## Steps

@@ -1,18 +1,18 @@
 ---
-name: clawdbrt:scores
+name: clawdbrt-scores
 description: Show calibration scoreboard for a repo or all tracked repos
 ---
 
-# /clawdbrt:scores — Calibration Scoreboard
+# /clawdbrt-scores — Calibration Scoreboard
 
 Show score history from past calibration runs.
 
 ## Usage
 
 ```
-/clawdbrt:scores                  # scores for the current repo
-/clawdbrt:scores --repo /path     # scores for a specific repo
-/clawdbrt:scores --all            # scores for all tracked repos
+/clawdbrt-scores                  # scores for the current repo
+/clawdbrt-scores --repo /path     # scores for a specific repo
+/clawdbrt-scores --all            # scores for all tracked repos
 ```
 
 ## Steps

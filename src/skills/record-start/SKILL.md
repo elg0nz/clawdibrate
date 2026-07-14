@@ -1,15 +1,15 @@
 ---
-name: clawdbrt:record-start
+name: clawdbrt-record-start
 description: Start recording all tool calls, searches, decisions, and user corrections to a JSONL transcript file in .clawdibrate/transcripts/.
 ---
 
-# /clawdbrt:record-start — Begin Transcript Recording
+# /clawdbrt-record-start — Begin Transcript Recording
 
 Start a structured transcript session that captures every tool call and user correction as JSONL events.
 
 ## When to Use
 
-When the user types `/clawdbrt:record-start` or asks to "start recording", "capture a transcript", or "log my session".
+When the user types `/clawdbrt-record-start` or asks to "start recording", "capture a transcript", or "log my session".
 
 ## Steps
 
@@ -24,7 +24,7 @@ When the user types `/clawdbrt:record-start` or asks to "start recording", "capt
 
 ## Recording Rules
 
-For the remainder of the session (until `/clawdbrt:record-stop`), append one JSON line per event to the transcript file after each tool call or user message.
+For the remainder of the session (until `/clawdbrt-record-stop`), append one JSON line per event to the transcript file after each tool call or user message.
 
 **CRITICAL — non-blocking writes:** Always append events using the Bash tool with `run_in_background: true`. This prevents transcript logging from blocking the user's workflow. Use shell `echo '...' >> <transcript_path>` — never the Write tool.
 

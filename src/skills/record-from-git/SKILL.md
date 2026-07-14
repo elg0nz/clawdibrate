@@ -1,9 +1,9 @@
 ---
-name: clawdbrt:record-from-git
+name: clawdbrt-record-from-git
 description: Create a bootstrap transcript in .clawdibrate/transcripts/ from recent git history touching the repo's active instruction file.
 ---
 
-# /clawdbrt:record-from-git — Bootstrap Transcript From Git
+# /clawdbrt-record-from-git — Bootstrap Transcript From Git
 
 Create a synthetic transcript for repos that do not have real recordings yet.
 
@@ -27,5 +27,5 @@ When the user asks to bootstrap calibration from git history, or when a repo has
 ## Notes
 
 - This is useful when real recordings do not exist yet.
-- The generated transcript is lower fidelity than `/clawdbrt:record-start` + `/clawdbrt:record-stop`.
+- The generated transcript is lower fidelity than `/clawdbrt-record-start` + `/clawdbrt-record-stop`.
 - Prefer real transcripts for future calibration runs once available.

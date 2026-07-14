@@ -1,6 +1,6 @@
 ---
-name: clawdbrt:bootstrap-transcript-calibrator
-description: "Externalized AGENTS.md heading 'Bootstrap Transcript Calibrator' as clawdbrt:bootstrap-transcript-calibrator (clawdibrate auto-extract)."
+name: clawdbrt-bootstrap-transcript-calibrator
+description: "Externalized AGENTS.md heading 'Bootstrap Transcript Calibrator' as clawdbrt-bootstrap-transcript-calibrator (clawdibrate auto-extract)."
 ---
 
 # Bootstrap Transcript Calibrator

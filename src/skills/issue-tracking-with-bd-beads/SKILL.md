@@ -1,6 +1,6 @@
 ---
-name: clawdbrt:issue-tracking-with-bd-beads
-description: "Externalized AGENTS.md heading 'Issue Tracking with bd (beads)' as clawdbrt:issue-tracking-with-bd-beads (clawdibrate auto-extract)."
+name: clawdbrt-issue-tracking-with-bd-beads
+description: "Externalized AGENTS.md heading 'Issue Tracking with bd (beads)' as clawdbrt-issue-tracking-with-bd-beads (clawdibrate auto-extract)."
 ---
 
 # Issue Tracking with bd (beads)

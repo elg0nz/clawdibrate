@@ -86,7 +86,7 @@ def dump_session(
         supported = ", ".join(sorted(_AGENT_PARSERS))
         raise RuntimeError(
             f"Unknown agent '{agent_name}'. Supported agents: {supported}. "
-            f"Use /clawdbrt:record-start to record sessions for any agent."
+            f"Use /clawdbrt-record-start to record sessions for any agent."
         )
     session_path, events = parser(repo_root, session_id)
     return write_transcript(repo_root, session_path, events, output_path)
