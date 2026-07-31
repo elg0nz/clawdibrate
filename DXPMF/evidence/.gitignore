@@ -1,0 +1,9 @@
+# User-supplied artifacts contain other people's repo internals.
+# Not committed by default — see README.md.
+# To commit a specific redacted file with written permission:
+#   git add -f DXPMF/evidence/runs/<run>/output/scorecard.md
+interview-notes/
+runs/
+
+# The synthetic fixture is safe to commit and is meant to be.
+!sample-bad-run/

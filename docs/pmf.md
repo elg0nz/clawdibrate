@@ -1,5 +1,9 @@
 # Clawdibrate PMF + Product Handoff
 
+> Product context and handoff notes. The runnable six-week method — weeks, gates, templates,
+> and evidence structure — lives in [`../DXPMF/`](../DXPMF/README.md); the Clawdibrate-specific
+> application of it is [`../DXPMF/clawdibrate-application.md`](../DXPMF/clawdibrate-application.md).
+
 ## Current read
 
 Clawdibrate is an agent-instruction evaluation tool. It analyzes repo instruction files like `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, plus agent sessions or git-history evidence, then produces a Scorecard identifying where agent behavior failed and what instruction sections should change.
